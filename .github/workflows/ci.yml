@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      PYTHONUNBUFFERED: "1"
+      LIVE_WEB_SEARCH_ENABLED: "false"
+      LLM_DRAFTING_ENABLED: "false"
+      CORS_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Compile backend
+        run: python -m compileall backend
+
+      - name: Run migrations
+        working-directory: backend
+        run: alembic upgrade head
+
+      - name: Seed backend data
+        working-directory: backend
+        run: python -m app.seed.seed_data
+
+      - name: Start backend
+        working-directory: backend
+        run: |
+          python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > ../backend-ci.out.log 2> ../backend-ci.err.log &
+          echo $! > ../backend-ci.pid
+
+      - name: Wait for backend health
+        run: |
+          python - <<'PY'
+          import time
+          import urllib.request
+
+          for attempt in range(60):
+              try:
+                  with urllib.request.urlopen("http://127.0.0.1:8000/health", timeout=5) as response:
+                      if response.status == 200:
+                          print("Backend is healthy")
+                          raise SystemExit(0)
+              except Exception as exc:
+                  print(f"Waiting for backend ({attempt + 1}/60): {exc}")
+                  time.sleep(2)
+          raise SystemExit("Backend did not become healthy")
+          PY
+
+      - name: Verify trained-model endpoints with fallback support
+        working-directory: backend
+        run: |
+          python scripts/verify_case_type_endpoint.py
+          python scripts/verify_legal_issue_endpoint.py
+
+      - name: Verify research workflow endpoints
+        working-directory: backend
+        run: python scripts/verify_research_endpoints.py
+
+      - name: Upload backend logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-ci-logs
+          path: |
+            backend-ci.out.log
+            backend-ci.err.log
+
+  frontend:
+    name: Frontend verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8000
+      INTERNAL_API_BASE_URL: http://127.0.0.1:8000
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Lint frontend
+        run: npm run lint
+
+      - name: Build frontend
+        run: npm run build

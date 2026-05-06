@@ -1,0 +1,47 @@
+services:
+  backend:
+    image: ${BACKEND_IMAGE}
+    restart: unless-stopped
+    env_file:
+      - .env.backend
+    environment:
+      BACKEND_HOST: 0.0.0.0
+      BACKEND_PORT: 8000
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////app/backend/dev.db}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+    volumes:
+      - backend_uploads:/app/backend/uploads
+      - backend_crawl_storage:/app/backend/crawl_storage
+      - backend_data:/app/backend/data
+      - backend_exports:/app/backend/exports
+      - backend_generated:/app/backend/generated
+      - backend_ml_artifacts:/app/backend/ml_artifacts
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=10)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  frontend:
+    image: ${FRONTEND_IMAGE}
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+      INTERNAL_API_BASE_URL: ${INTERNAL_API_BASE_URL}
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  backend_uploads:
+  backend_crawl_storage:
+  backend_data:
+  backend_exports:
+  backend_generated:
+  backend_ml_artifacts:

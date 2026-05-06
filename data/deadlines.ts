@@ -1,0 +1,58 @@
+import type { Deadline } from "@/types";
+
+export const deadlines: Deadline[] = [
+  {
+    id: "dl-001",
+    caseId: "green-valley-dha",
+    title: "File urgency note and annexure index",
+    dueDate: "2026-04-23",
+    owner: "Sara Nadeem",
+    severity: "Critical",
+    note: "Needed before injunction hearing bundle is finalized.",
+  },
+  {
+    id: "dl-002",
+    caseId: "sanaullah-bail",
+    title: "Obtain certified copy of parity order",
+    dueDate: "2026-04-25",
+    owner: "Bilal Afridi",
+    severity: "High",
+    note: "Bench note will be materially stronger with the certified copy.",
+  },
+  {
+    id: "dl-003",
+    caseId: "horizon-customs-petition",
+    title: "Finalize petition set and partner markup",
+    dueDate: "2026-04-28",
+    owner: "Hira Kamal",
+    severity: "High",
+    note: "Includes prayer clause verification and invoice endorsement check.",
+  },
+  {
+    id: "dl-004",
+    caseId: "mehr-un-nisa-service",
+    title: "Cross-check representation chronology",
+    dueDate: "2026-04-29",
+    owner: "Procedural Agent",
+    severity: "Medium",
+    note: "Condonation plea depends on date accuracy.",
+  },
+  {
+    id: "dl-005",
+    caseId: "al-habib-revenue",
+    title: "Attach genealogy chart and service addresses",
+    dueDate: "2026-04-30",
+    owner: "Rida Ameen",
+    severity: "Medium",
+    note: "Required before the revision packet can be marked final.",
+  },
+  {
+    id: "dl-006",
+    caseId: "raza-foods-civil",
+    title: "Draft proposed issues for next hearing",
+    dueDate: "2026-05-10",
+    owner: "Dania Rahim",
+    severity: "Low",
+    note: "Supports issue framing and evidence planning.",
+  },
+];

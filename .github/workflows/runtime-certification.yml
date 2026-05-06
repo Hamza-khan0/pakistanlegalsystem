@@ -1,0 +1,114 @@
+name: Runtime Certification
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: runtime-certification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  certify:
+    name: Full runtime certification
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      PYTHONUNBUFFERED: "1"
+      LIVE_WEB_SEARCH_ENABLED: "false"
+      LLM_DRAFTING_ENABLED: "false"
+      NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8000
+      INTERNAL_API_BASE_URL: http://127.0.0.1:8000
+      VERIFY_API_BASE_URL: http://127.0.0.1:8000
+      VERIFY_FRONTEND_BASE_URL: http://127.0.0.1:3001
+      VERIFY_FRONTEND_ORIGIN: http://127.0.0.1:3001
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Compile backend
+        run: python -m compileall backend
+
+      - name: Migrate and seed
+        working-directory: backend
+        run: |
+          alembic upgrade head
+          python -m app.seed.seed_data
+
+      - name: Build frontend
+        run: |
+          npm run lint
+          npm run build
+
+      - name: Start backend
+        working-directory: backend
+        run: |
+          python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > ../runtime-backend.out.log 2> ../runtime-backend.err.log &
+          echo $! > ../runtime-backend.pid
+
+      - name: Start frontend
+        run: |
+          npm run dev -- --hostname 127.0.0.1 --port 3001 > runtime-frontend.out.log 2> runtime-frontend.err.log &
+          echo $! > runtime-frontend.pid
+
+      - name: Wait for servers
+        run: |
+          python - <<'PY'
+          import time
+          import urllib.request
+
+          targets = [
+              "http://127.0.0.1:8000/health",
+              "http://127.0.0.1:3001/dashboard",
+          ]
+          for target in targets:
+              for attempt in range(90):
+                  try:
+                      with urllib.request.urlopen(target, timeout=5) as response:
+                          if response.status < 500:
+                              print(f"{target} ready")
+                              break
+                  except Exception as exc:
+                      print(f"Waiting for {target} ({attempt + 1}/90): {exc}")
+                      time.sleep(2)
+              else:
+                  raise SystemExit(f"{target} did not become ready")
+          PY
+
+      - name: Run full certification
+        working-directory: backend
+        run: python -m app.seed.verify_runtime
+
+      - name: Upload certification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-certification-report
+          path: |
+            verification_reports/**
+            runtime-backend.out.log
+            runtime-backend.err.log
+            runtime-frontend.out.log
+            runtime-frontend.err.log

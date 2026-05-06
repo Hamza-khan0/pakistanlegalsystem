@@ -1,0 +1,42 @@
+[
+  {
+    "query": "order vii rule 11 plaint rejection maintainability barred by law",
+    "taskType": "preliminary_objections",
+    "expectedLabels": ["CPC Order VII Rule 11", "CPC Section 9"],
+    "language": "English"
+  },
+  {
+    "query": "article 199 writ maintainability alternate remedy public law",
+    "taskType": "research_memo",
+    "expectedLabels": ["Constitution Article 199"],
+    "language": "English"
+  },
+  {
+    "query": "injunction prima facie case balance of convenience irreparable loss",
+    "taskType": "hearing_notes",
+    "expectedLabels": [
+      "CPC Order XXXIX Rule 1",
+      "CPC Order XXXIX Rule 2",
+      "Specific Relief Act Section 54"
+    ],
+    "language": "English"
+  },
+  {
+    "query": "service tribunal maintainability reinstatement jurisdiction",
+    "taskType": "procedural_check",
+    "expectedLabels": ["Punjab Service Tribunals Act Section 4"],
+    "language": "English"
+  },
+  {
+    "query": "documentary dispute burden of proof article 117",
+    "taskType": "research_memo",
+    "expectedLabels": ["Qanun-e-Shahadat Article 117"],
+    "language": "English"
+  },
+  {
+    "query": "آرٹیکل 199 رٹ برقرار متبادل علاج دائرہ اختیار",
+    "taskType": "research_memo",
+    "expectedLabels": ["Constitution Article 199"],
+    "language": "Urdu"
+  }
+]

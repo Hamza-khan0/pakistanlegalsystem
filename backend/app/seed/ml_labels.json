@@ -1,0 +1,30 @@
+{
+  "green-valley-dha": {
+    "case_outcome": "partial",
+    "maintainability": "objection_prone",
+    "risk_scoring": "high",
+    "case_type": "civil",
+    "label_source": "manual_seed"
+  },
+  "horizon-customs-petition": {
+    "case_outcome": "win",
+    "maintainability": "objection_prone",
+    "risk_scoring": "high",
+    "case_type": "constitutional",
+    "label_source": "manual_seed"
+  },
+  "mehr-un-nisa-service": {
+    "case_outcome": "partial",
+    "maintainability": "uncertain",
+    "risk_scoring": "medium",
+    "case_type": "service",
+    "label_source": "manual_seed"
+  },
+  "al-habib-revenue": {
+    "case_outcome": "lose",
+    "maintainability": "maintainable",
+    "risk_scoring": "medium",
+    "case_type": "revenue",
+    "label_source": "manual_seed"
+  }
+}

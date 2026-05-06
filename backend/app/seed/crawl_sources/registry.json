@@ -1,0 +1,70 @@
+[
+  {
+    "name": "Pakistan Statutes Demo Source",
+    "sourceType": "HTML",
+    "baseUrl": "https://demo.local/statutes",
+    "allowedDomains": ["demo.local"],
+    "crawlMode": "Paginated Index",
+    "languageHint": "English",
+    "category": "Statute",
+    "isActive": true,
+    "config": {
+      "entryUrls": ["fixtures/statutes/index-page-1.html"],
+      "rateLimitSeconds": 0.0,
+      "maxPages": 4,
+      "listing": {
+        "detailLinkSelector": ".listing a.detail-link"
+      },
+      "pagination": {
+        "nextLinkSelector": "a.next-page"
+      },
+      "content": {
+        "titleSelector": "article .doc-title",
+        "bodySelector": "article .doc-body",
+        "downloadLinkSelector": "a.download-link",
+        "metadataSelectors": {
+          "citationLabel": ".citation",
+          "actName": ".act-name",
+          "sectionLabel": ".section-label",
+          "category": ".category-label",
+          "language": ".language-label",
+          "documentType": ".document-type"
+        }
+      },
+      "documentTypeHint": "Statute"
+    }
+  },
+  {
+    "name": "Pakistan Case Law Demo Source",
+    "sourceType": "Mixed",
+    "baseUrl": "https://demo.local/caselaw",
+    "allowedDomains": ["demo.local"],
+    "crawlMode": "Index",
+    "languageHint": "English",
+    "category": "Case Law",
+    "isActive": true,
+    "config": {
+      "entryUrls": ["fixtures/caselaw/index.html"],
+      "rateLimitSeconds": 0.0,
+      "maxPages": 2,
+      "listing": {
+        "detailLinkSelector": ".listing a.detail-link"
+      },
+      "content": {
+        "titleSelector": "article .doc-title",
+        "bodySelector": "article .doc-body",
+        "downloadLinkSelector": "a.download-link",
+        "metadataSelectors": {
+          "citationLabel": ".citation",
+          "court": ".court",
+          "bench": ".bench",
+          "decisionDate": ".decision-date",
+          "category": ".category-label",
+          "language": ".language-label",
+          "documentType": ".document-type"
+        }
+      },
+      "documentTypeHint": "Case Law"
+    }
+  }
+]

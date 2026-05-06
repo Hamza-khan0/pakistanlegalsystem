@@ -1,0 +1,245 @@
+[
+  {
+    "id": "constitution-article-4",
+    "source_type": "Constitution",
+    "title": "Constitution of Pakistan - Article 4",
+    "short_title": "Article 4",
+    "jurisdiction": "Pakistan",
+    "category": "Fundamental Rights",
+    "act_name": "Constitution of the Islamic Republic of Pakistan, 1973",
+    "section_label": "Article 4",
+    "section_number": "4",
+    "citation_label": "Constitution Article 4",
+    "year": 1973,
+    "language": "English",
+    "content": "Curated chamber excerpt: Article 4 protects the right of individuals to be dealt with in accordance with law and to enjoy the protection of law. It supports challenges to arbitrary executive or administrative action where lawful treatment and due process are in issue.",
+    "metadata_json": {
+      "keywords": ["arbitrary action", "protection of law", "administrative action", "executive action"],
+      "seedCorpus": "Phase 5 Pakistan core sources",
+      "corpusNote": "Curated development excerpt for chamber grounding"
+    }
+  },
+  {
+    "id": "constitution-article-10a",
+    "source_type": "Constitution",
+    "title": "Constitution of Pakistan - Article 10A",
+    "short_title": "Article 10A",
+    "jurisdiction": "Pakistan",
+    "category": "Fair Trial",
+    "act_name": "Constitution of the Islamic Republic of Pakistan, 1973",
+    "section_label": "Article 10A",
+    "section_number": "10A",
+    "citation_label": "Constitution Article 10A",
+    "year": 1973,
+    "language": "English",
+    "content": "Curated chamber excerpt: Article 10A recognizes the right to fair trial and due process. In chamber workflows it is relevant where a party alleges denial of hearing, lack of notice, or a decision taken without a fair opportunity to respond.",
+    "metadata_json": {
+      "keywords": ["fair trial", "due process", "denial of hearing", "notice", "opportunity of hearing"],
+      "seedCorpus": "Phase 5 Pakistan core sources",
+      "corpusNote": "Curated development excerpt for chamber grounding"
+    }
+  },
+  {
+    "id": "constitution-article-199",
+    "source_type": "Constitution",
+    "title": "Constitution of Pakistan - Article 199",
+    "short_title": "Article 199",
+    "jurisdiction": "Pakistan",
+    "category": "Constitutional Jurisdiction",
+    "act_name": "Constitution of the Islamic Republic of Pakistan, 1973",
+    "section_label": "Article 199",
+    "section_number": "199",
+    "citation_label": "Constitution Article 199",
+    "year": 1973,
+    "language": "English",
+    "content": "Curated chamber excerpt: Article 199 empowers a High Court to issue appropriate constitutional directions, orders, or writs to a person performing functions in connection with the affairs of the Federation, a Province, or a local authority. Chamber use typically focuses on jurisdiction, availability of alternate remedies, unlawful exercise of power, lack of lawful authority, and urgent interference where a public-law element is shown.",
+    "metadata_json": {
+      "keywords": ["writ", "constitutional petition", "alternate remedy", "jurisdiction", "public law", "without lawful authority"],
+      "seedCorpus": "Phase 5 Pakistan core sources",
+      "corpusNote": "Curated development excerpt for chamber grounding"
+    }
+  },
+  {
+    "id": "cpc-section-9",
+    "source_type": "Statute",
+    "title": "Code of Civil Procedure - Section 9",
+    "short_title": "CPC Section 9",
+    "jurisdiction": "Pakistan",
+    "category": "Civil Jurisdiction",
+    "act_name": "Code of Civil Procedure, 1908",
+    "section_label": "Section 9",
+    "section_number": "9",
+    "citation_label": "CPC Section 9",
+    "year": 1908,
+    "language": "English",
+    "content": "Curated chamber excerpt: Section 9 states the general rule that civil courts have jurisdiction to try suits of a civil nature unless their cognizance is expressly or impliedly barred. Chamber use often turns on whether a statutory remedy ousts ordinary civil jurisdiction or whether the pleaded relief remains maintainable before the civil forum.",
+    "metadata_json": {
+      "keywords": ["civil suit", "jurisdiction", "bar of jurisdiction", "civil nature", "maintainability"],
+      "seedCorpus": "Phase 5 Pakistan core sources",
+      "corpusNote": "Curated development excerpt for chamber grounding"
+    }
+  },
+  {
+    "id": "cpc-order-7-rule-11",
+    "source_type": "Rules",
+    "title": "Code of Civil Procedure - Order VII Rule 11",
+    "short_title": "Order VII Rule 11",
+    "jurisdiction": "Pakistan",
+    "category": "Pleadings",
+    "act_name": "Code of Civil Procedure, 1908",
+    "section_label": "Order VII Rule 11",
+    "section_number": "O7R11",
+    "order_rule_label": "Order VII Rule 11",
+    "citation_label": "CPC Order VII Rule 11",
+    "year": 1908,
+    "language": "English",
+    "content": "Curated chamber excerpt: Order VII Rule 11 addresses rejection of plaint where, for example, the plaint does not disclose a cause of action, is barred by law on the face of the plaint, is undervalued and not corrected, or suffers from specified defects. Chamber workflows use it when framing threshold objections, especially where maintainability or facial legal bars are raised at the outset.",
+    "metadata_json": {
+      "keywords": ["rejection of plaint", "cause of action", "barred by law", "threshold objection", "maintainability"],
+      "seedCorpus": "Phase 5 Pakistan core sources",
+      "corpusNote": "Curated development excerpt for chamber grounding"
+    }
+  },
+  {
+    "id": "cpc-order-39-rule-1",
+    "source_type": "Rules",
+    "title": "Code of Civil Procedure - Order XXXIX Rule 1",
+    "short_title": "Order XXXIX Rule 1",
+    "jurisdiction": "Pakistan",
+    "category": "Interim Relief",
+    "act_name": "Code of Civil Procedure, 1908",
+    "section_label": "Order XXXIX Rule 1",
+    "section_number": "O39R1",
+    "order_rule_label": "Order XXXIX Rule 1",
+    "citation_label": "CPC Order XXXIX Rule 1",
+    "year": 1908,
+    "language": "English",
+    "content": "Curated chamber excerpt: Order XXXIX Rule 1 deals with temporary injunctions where property in dispute is in danger of being wasted, damaged, alienated, wrongfully sold, or where the defendant threatens to dispossess the plaintiff or otherwise cause injury in relation to the disputed property. It is a core procedural hook for urgent status-quo and preservation relief.",
+    "metadata_json": {
+      "keywords": ["temporary injunction", "alienation", "dispossession", "status quo", "property in dispute", "injunction"],
+      "seedCorpus": "Phase 5 Pakistan core sources",
+      "corpusNote": "Curated development excerpt for chamber grounding"
+    }
+  },
+  {
+    "id": "cpc-order-39-rule-2",
+    "source_type": "Rules",
+    "title": "Code of Civil Procedure - Order XXXIX Rule 2",
+    "short_title": "Order XXXIX Rule 2",
+    "jurisdiction": "Pakistan",
+    "category": "Interim Relief",
+    "act_name": "Code of Civil Procedure, 1908",
+    "section_label": "Order XXXIX Rule 2",
+    "section_number": "O39R2",
+    "order_rule_label": "Order XXXIX Rule 2",
+    "citation_label": "CPC Order XXXIX Rule 2",
+    "year": 1908,
+    "language": "English",
+    "content": "Curated chamber excerpt: Order XXXIX Rule 2 covers injunctions to restrain repetition or continuance of breach of contract or other injury. In chamber drafting it is useful when the plaintiff seeks restraint against threatened coercive action, alienation, or repetition of an alleged unlawful interference.",
+    "metadata_json": {
+      "keywords": ["breach of contract", "continuing injury", "restraint", "interim injunction", "coercive action"],
+      "seedCorpus": "Phase 5 Pakistan core sources",
+      "corpusNote": "Curated development excerpt for chamber grounding"
+    }
+  },
+  {
+    "id": "cpc-section-151",
+    "source_type": "Statute",
+    "title": "Code of Civil Procedure - Section 151",
+    "short_title": "CPC Section 151",
+    "jurisdiction": "Pakistan",
+    "category": "Inherent Powers",
+    "act_name": "Code of Civil Procedure, 1908",
+    "section_label": "Section 151",
+    "section_number": "151",
+    "citation_label": "CPC Section 151",
+    "year": 1908,
+    "language": "English",
+    "content": "Curated chamber excerpt: Section 151 preserves the inherent powers of the court to make orders necessary for the ends of justice or to prevent abuse of the process of the court. Chamber use is typically supportive and cautious: it reinforces relief where the Code is not exhaustive but should not be used to override an express provision.",
+    "metadata_json": {
+      "keywords": ["inherent powers", "ends of justice", "abuse of process", "supportive jurisdiction"],
+      "seedCorpus": "Phase 5 Pakistan core sources",
+      "corpusNote": "Curated development excerpt for chamber grounding"
+    }
+  },
+  {
+    "id": "specific-relief-section-54",
+    "source_type": "Statute",
+    "title": "Specific Relief Act - Section 54",
+    "short_title": "Section 54",
+    "jurisdiction": "Pakistan",
+    "category": "Injunctions",
+    "act_name": "Specific Relief Act, 1877",
+    "section_label": "Section 54",
+    "section_number": "54",
+    "citation_label": "Specific Relief Act Section 54",
+    "year": 1877,
+    "language": "English",
+    "content": "Curated chamber excerpt: Section 54 concerns perpetual injunctions and the circumstances in which a court may restrain a defendant from invading or threatening to invade the plaintiff's rights. Chamber drafting uses it alongside CPC interim-relief provisions when the final prayer includes permanent injunctive protection.",
+    "metadata_json": {
+      "keywords": ["perpetual injunction", "threatened invasion of rights", "injunctive relief", "final relief"],
+      "seedCorpus": "Phase 5 Pakistan core sources",
+      "corpusNote": "Curated development excerpt for chamber grounding"
+    }
+  },
+  {
+    "id": "service-tribunals-act-section-4",
+    "source_type": "Statute",
+    "title": "Punjab Service Tribunals Act - Section 4",
+    "short_title": "Section 4",
+    "jurisdiction": "Punjab, Pakistan",
+    "category": "Service Tribunal Jurisdiction",
+    "act_name": "Punjab Service Tribunals Act, 1974",
+    "section_label": "Section 4",
+    "section_number": "4",
+    "citation_label": "Punjab Service Tribunals Act Section 4",
+    "year": 1974,
+    "language": "English",
+    "content": "Curated chamber excerpt: Section 4 is treated in chamber workflows as the core jurisdictional provision governing appeals or service grievances before the Punjab Service Tribunal. It is relevant when assessing forum competence, scope of appeal, limitation sensitivity, and the nature of service relief that can be meaningfully pursued.",
+    "metadata_json": {
+      "keywords": ["service appeal", "tribunal jurisdiction", "promotion dispute", "limitation", "forum competence"],
+      "seedCorpus": "Phase 5 Pakistan core sources",
+      "corpusNote": "Curated development excerpt for chamber grounding"
+    }
+  },
+  {
+    "id": "qanun-e-shahadat-article-117",
+    "source_type": "Statute",
+    "title": "Qanun-e-Shahadat Order - Article 117",
+    "short_title": "Article 117",
+    "jurisdiction": "Pakistan",
+    "category": "Evidence",
+    "act_name": "Qanun-e-Shahadat Order, 1984",
+    "section_label": "Article 117",
+    "section_number": "117",
+    "citation_label": "Qanun-e-Shahadat Article 117",
+    "year": 1984,
+    "language": "English",
+    "content": "Curated chamber excerpt: Article 117 is commonly invoked for burden-of-proof analysis. Chamber use is strongest where pleadings, annexures, or procedural objections depend on which party must establish a fact, especially in documentary disputes and maintainability objections tied to the existing record.",
+    "metadata_json": {
+      "keywords": ["burden of proof", "documentary dispute", "record support", "evidence"],
+      "seedCorpus": "Phase 5 Pakistan core sources",
+      "corpusNote": "Curated development excerpt for chamber grounding"
+    }
+  },
+  {
+    "id": "crpc-section-497",
+    "source_type": "Statute",
+    "title": "Code of Criminal Procedure - Section 497",
+    "short_title": "CrPC Section 497",
+    "jurisdiction": "Pakistan",
+    "category": "Bail",
+    "act_name": "Code of Criminal Procedure, 1898",
+    "section_label": "Section 497",
+    "section_number": "497",
+    "citation_label": "CrPC Section 497",
+    "year": 1898,
+    "language": "English",
+    "content": "Curated chamber excerpt: Section 497 is a core bail provision and is included in the development corpus to support future criminal-matter workflows. It becomes relevant where the chamber needs to assess statutory bars, further inquiry, or the procedural posture of a bail application.",
+    "metadata_json": {
+      "keywords": ["bail", "further inquiry", "statutory bar", "criminal procedure"],
+      "seedCorpus": "Phase 5 Pakistan core sources",
+      "corpusNote": "Curated development excerpt for chamber grounding"
+    }
+  }
+]

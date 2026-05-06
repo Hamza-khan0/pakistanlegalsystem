@@ -1,0 +1,20 @@
+[
+  {
+    "name": "supreme_court_pakistan_judgments",
+    "source_type": "kaggle",
+    "dataset_slug": "shahsayesha/supreme-court-of-pakistan-judgment",
+    "enabled": true
+  },
+  {
+    "name": "pakistan_law_data",
+    "source_type": "kaggle",
+    "dataset_slug": "ayeshajadoon/pakistan-law-data",
+    "enabled": true
+  },
+  {
+    "name": "hf_supreme_court_pak_judgments",
+    "source_type": "huggingface",
+    "dataset_id": "Ibtehaj10/supreme-court-of-pak-judgments",
+    "enabled": true
+  }
+]
