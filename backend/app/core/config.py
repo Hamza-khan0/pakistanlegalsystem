@@ -1,12 +1,19 @@
+import json
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, field_validator
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 PROJECT_ROOT = BASE_DIR.parent
+DEFAULT_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+]
 
 
 class Settings(BaseSettings):
@@ -83,14 +90,7 @@ class Settings(BaseSettings):
     semantic_retrieval_top_k: int = 10
     tesseract_cmd: str = "tesseract"
     ocr_default_languages: str = "eng"
-    cors_origins: list[str] = Field(
-        default_factory=lambda: [
-            "http://localhost:3000",
-            "http://127.0.0.1:3000",
-            "http://localhost:3001",
-            "http://127.0.0.1:3001",
-        ]
-    )
+    cors_origins: str = Field(default=",".join(DEFAULT_CORS_ORIGINS))
 
     model_config = SettingsConfigDict(
         env_file=str(PROJECT_ROOT / ".env"),
@@ -99,12 +99,21 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    @field_validator("cors_origins", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, value: object) -> object:
-        if isinstance(value, str):
-            return [item.strip() for item in value.split(",") if item.strip()]
-        return value
+    @property
+    def cors_origin_list(self) -> list[str]:
+        raw_value = self.cors_origins.strip()
+        if not raw_value:
+            return DEFAULT_CORS_ORIGINS
+
+        if raw_value.startswith("["):
+            try:
+                parsed = json.loads(raw_value)
+            except json.JSONDecodeError:
+                parsed = []
+            if isinstance(parsed, list):
+                return [str(item).strip() for item in parsed if str(item).strip()]
+
+        return [item.strip() for item in raw_value.split(",") if item.strip()]
 
 
 @lru_cache
