@@ -8,6 +8,7 @@ python-multipart==0.0.20
 psycopg[binary]==3.2.9
 pypdf==5.9.0
 httpx==0.28.1
+openai>=1.99.0,<3.0.0
 beautifulsoup4==4.13.4
 pytesseract==0.3.13
 Pillow==11.2.1

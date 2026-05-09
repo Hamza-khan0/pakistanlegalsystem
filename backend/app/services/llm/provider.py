@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+import importlib.util
 import json
 import logging
 import re
@@ -30,8 +31,10 @@ DATE_PATTERN = re.compile(
 
 logger = logging.getLogger(__name__)
 OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions"
+OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
 PRIVACY_NOTICE = (
-    "When enabled, selected case text and research sources may be sent to the configured external LLM provider."
+    "When external LLM or web search is enabled, selected case text, research queries, and retrieved source excerpts "
+    "may be sent to the configured OpenAI API."
 )
 
 
@@ -58,21 +61,26 @@ def truncate(value: str, *, limit: int = 1200) -> str:
 
 
 def is_llm_available() -> bool:
-    return bool(settings.openai_api_key.strip())
+    return bool(settings.llm_drafting_enabled and settings.openai_api_key.strip())
 
 
 def get_llm_health() -> dict[str, Any]:
     enabled = bool(settings.llm_drafting_enabled)
-    available = is_llm_available()
+    key_configured = bool(settings.openai_api_key.strip())
+    sdk_available = importlib.util.find_spec("openai") is not None
+    available = bool(enabled and key_configured)
     return {
         "enabled": enabled,
-        "available": enabled and available,
-        "provider": "openai" if available else "none",
+        "available": available,
+        "provider": "openai" if key_configured else "none",
         "model": settings.openai_model,
+        "responses_api": True,
+        "openai_package_installed": sdk_available,
+        "api_key_configured": key_configured,
         "reason": (
-            "OpenAI API key configured."
+            "OpenAI LLM drafting is enabled."
             if available
-            else "OPENAI_API_KEY is not configured; deterministic fallback will be used."
+            else "OPENAI_API_KEY is not configured or LLM_DRAFTING_ENABLED is false; deterministic fallback will be used."
         ),
         "privacy_notice": PRIVACY_NOTICE,
     }
@@ -91,22 +99,73 @@ def _extract_json_object(text: str) -> dict[str, Any]:
         raise
 
 
-def _call_openai_chat(
+def _extract_response_text(data: dict[str, Any]) -> str:
+    output_text = data.get("output_text")
+    if isinstance(output_text, str) and output_text.strip():
+        return output_text
+
+    chunks: list[str] = []
+    for item in data.get("output", []) or []:
+        if not isinstance(item, dict):
+            continue
+        for content in item.get("content", []) or []:
+            if not isinstance(content, dict):
+                continue
+            text = content.get("text")
+            if isinstance(text, str):
+                chunks.append(text)
+    return "\n".join(chunks).strip()
+
+
+def _request_openai(payload: dict[str, Any], *, endpoint: str = OPENAI_RESPONSES_URL) -> dict[str, Any]:
+    headers = {
+        "Authorization": f"Bearer {settings.openai_api_key}",
+        "Content-Type": "application/json",
+    }
+    with httpx.Client(timeout=max(30, settings.web_search_timeout_seconds)) as client:
+        response = client.post(endpoint, headers=headers, json=payload)
+    response.raise_for_status()
+    return response.json()
+
+
+def _responses_payload(
     prompt: str,
     *,
-    temperature: float = 0.2,
-    json_mode: bool = False,
-) -> str:
-    if not is_llm_available():
-        raise RuntimeError("OPENAI_API_KEY is not configured.")
+    system_prompt: str | None,
+    temperature: float,
+    max_output_tokens: int | None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "model": settings.openai_model,
+        "instructions": system_prompt
+        or (
+            "You are an AI Legal Chambers assistant. Do not invent legal authorities, citations, courts, dates, "
+            "or facts. Use only supplied sources as authorities."
+        ),
+        "input": prompt,
+        "temperature": temperature,
+    }
+    if max_output_tokens:
+        payload["max_output_tokens"] = max_output_tokens
+    return payload
 
+
+def _chat_payload(
+    prompt: str,
+    *,
+    system_prompt: str | None,
+    temperature: float,
+    json_mode: bool,
+    max_output_tokens: int | None,
+) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "model": settings.openai_model,
         "temperature": temperature,
         "messages": [
             {
                 "role": "system",
-                "content": (
+                "content": system_prompt
+                or (
                     "You are an AI Legal Chambers assistant. Do not invent legal authorities, "
                     "citations, courts, dates, or facts. Use only supplied sources as authorities."
                 ),
@@ -116,34 +175,65 @@ def _call_openai_chat(
     }
     if json_mode:
         payload["response_format"] = {"type": "json_object"}
+    if max_output_tokens:
+        payload["max_tokens"] = max_output_tokens
+    return payload
 
-    headers = {
-        "Authorization": f"Bearer {settings.openai_api_key}",
-        "Content-Type": "application/json",
-    }
+
+def _call_openai_text(
+    prompt: str,
+    *,
+    system_prompt: str | None = None,
+    temperature: float = 0.2,
+    json_mode: bool = False,
+    max_output_tokens: int | None = None,
+) -> dict[str, Any]:
+    if not is_llm_available():
+        return {
+            "ok": False,
+            "text": "",
+            "json": None,
+            "model": settings.openai_model,
+            "provider": "openai",
+            "error": "OPENAI_API_KEY is not configured or LLM_DRAFTING_ENABLED is false.",
+            "duration_ms": 0,
+        }
+
     last_error: Exception | None = None
     for attempt in range(2):
         started = time.perf_counter()
         try:
-            with httpx.Client(timeout=max(30, settings.web_source_fetch_timeout_seconds)) as client:
-                response = client.post(OPENAI_CHAT_COMPLETIONS_URL, headers=headers, json=payload)
-            response.raise_for_status()
-            data = response.json()
-            content = data["choices"][0]["message"]["content"]
+            data = _request_openai(
+                _responses_payload(
+                    prompt,
+                    system_prompt=system_prompt,
+                    temperature=temperature,
+                    max_output_tokens=max_output_tokens,
+                )
+            )
+            content = _extract_response_text(data)
             duration_ms = round((time.perf_counter() - started) * 1000)
             logger.info(
-                "LLM_GENERATION_SUCCESS model=%s json=%s duration_ms=%s attempt=%s",
+                "LLM_RESPONSES_SUCCESS model=%s json=%s duration_ms=%s attempt=%s",
                 settings.openai_model,
                 json_mode,
                 duration_ms,
                 attempt + 1,
             )
-            return str(content or "")
+            return {
+                "ok": True,
+                "text": str(content or ""),
+                "json": None,
+                "model": settings.openai_model,
+                "provider": "openai",
+                "error": None,
+                "duration_ms": duration_ms,
+            }
         except Exception as exc:
             last_error = exc
             duration_ms = round((time.perf_counter() - started) * 1000)
             logger.warning(
-                "LLM_GENERATION_FAILED model=%s json=%s duration_ms=%s attempt=%s error=%s",
+                "LLM_RESPONSES_FAILED model=%s json=%s duration_ms=%s attempt=%s error=%s",
                 settings.openai_model,
                 json_mode,
                 duration_ms,
@@ -152,30 +242,122 @@ def _call_openai_chat(
             )
             if attempt == 0:
                 time.sleep(0.5)
-    raise RuntimeError(f"LLM generation failed: {last_error}")
+
+    # Compatibility fallback for older accounts/models where Responses parameters may not be enabled yet.
+    started = time.perf_counter()
+    try:
+        data = _request_openai(
+            _chat_payload(
+                prompt,
+                system_prompt=system_prompt,
+                temperature=temperature,
+                json_mode=json_mode,
+                max_output_tokens=max_output_tokens,
+            ),
+            endpoint=OPENAI_CHAT_COMPLETIONS_URL,
+        )
+        content = data["choices"][0]["message"]["content"]
+        duration_ms = round((time.perf_counter() - started) * 1000)
+        logger.info(
+            "LLM_CHAT_COMPAT_SUCCESS model=%s json=%s duration_ms=%s",
+            settings.openai_model,
+            json_mode,
+            duration_ms,
+        )
+        return {
+            "ok": True,
+            "text": str(content or ""),
+            "json": None,
+            "model": settings.openai_model,
+            "provider": "openai",
+            "error": None,
+            "duration_ms": duration_ms,
+        }
+    except Exception as exc:
+        duration_ms = round((time.perf_counter() - started) * 1000)
+        return {
+            "ok": False,
+            "text": "",
+            "json": None,
+            "model": settings.openai_model,
+            "provider": "openai",
+            "error": f"{type(last_error or exc).__name__}: {last_error or exc}",
+            "duration_ms": duration_ms,
+        }
 
 
-def generate_text(prompt: str, temperature: float = 0.2) -> str:
-    return _call_openai_chat(prompt, temperature=temperature, json_mode=False)
+def generate_text(
+    prompt: str,
+    system_prompt: str | None = None,
+    temperature: float = 0.2,
+    max_output_tokens: int | None = None,
+) -> dict[str, Any]:
+    return _call_openai_text(
+        prompt,
+        system_prompt=system_prompt,
+        temperature=temperature,
+        json_mode=False,
+        max_output_tokens=max_output_tokens,
+    )
 
 
-def generate_json(prompt: str, schema_name: str, temperature: float = 0.2) -> dict[str, Any]:
+def generate_json(
+    prompt: str,
+    system_prompt: str | None = None,
+    schema_name: str | None = None,
+    temperature: float = 0.2,
+    max_output_tokens: int | None = None,
+) -> dict[str, Any]:
+    schema_label = schema_name or "JSON"
     json_prompt = (
-        f"Return valid JSON only for schema `{schema_name}`. "
+        f"Return valid JSON only for schema `{schema_label}`. "
         "Do not wrap it in Markdown.\n\n"
         f"{prompt}"
     )
-    content = _call_openai_chat(json_prompt, temperature=temperature, json_mode=True)
+    result = _call_openai_text(
+        json_prompt,
+        system_prompt=system_prompt,
+        temperature=temperature,
+        json_mode=True,
+        max_output_tokens=max_output_tokens,
+    )
+    if not result["ok"]:
+        return result
+
+    content = str(result.get("text") or "")
     try:
-        return _extract_json_object(content)
+        result["json"] = _extract_json_object(content)
+        return result
     except Exception:
         repair_prompt = (
-            f"Repair this into valid JSON only for schema `{schema_name}`. "
+            f"Repair this into valid JSON only for schema `{schema_label}`. "
             "No Markdown, no commentary.\n\n"
             f"{content[:12000]}"
         )
-        repaired = _call_openai_chat(repair_prompt, temperature=0.0, json_mode=True)
-        return _extract_json_object(repaired)
+        repaired = _call_openai_text(
+            repair_prompt,
+            system_prompt=system_prompt,
+            temperature=0.0,
+            json_mode=True,
+            max_output_tokens=max_output_tokens,
+        )
+        if not repaired["ok"]:
+            return {
+                **result,
+                "ok": False,
+                "json": None,
+                "error": repaired.get("error") or "JSON repair failed.",
+            }
+        try:
+            repaired["json"] = _extract_json_object(str(repaired.get("text") or ""))
+            return repaired
+        except Exception as exc:
+            return {
+                **repaired,
+                "ok": False,
+                "json": None,
+                "error": f"JSON parse failed: {type(exc).__name__}",
+            }
 
 
 def extract_dates(source: str) -> list[str]:

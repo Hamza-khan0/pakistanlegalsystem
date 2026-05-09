@@ -64,6 +64,7 @@ import type {
   GroundingSource,
   NoteEntry,
   ResearchWorkflowResponse,
+  RetrievedLegalSource,
   ResearchHealth,
   ResearchNote,
   TimelineEntry,
@@ -371,6 +372,62 @@ function mergeUniqueStrings(...collections: Array<string[] | undefined>) {
     });
   });
   return items;
+}
+
+function sourceGroupCount(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.length;
+  }
+  return typeof value === "number" ? value : 0;
+}
+
+function sourceGroupEntries(
+  groups: ResearchWorkflowResponse["sourcesByOrigin"],
+): Array<[string, RetrievedLegalSource[]]> {
+  return Object.entries(groups).map(([origin, value]) => [
+    origin,
+    Array.isArray(value)
+      ? value.map((source) => {
+          const raw = source as RetrievedLegalSource & Record<string, unknown>;
+          return {
+            ...source,
+            id: source.id ?? (typeof raw.source_id === "string" ? raw.source_id : null),
+            sourceType:
+              source.sourceType ??
+              (typeof raw.source_type === "string" ? raw.source_type : "unknown"),
+            relevanceScore:
+              source.relevanceScore ??
+              (typeof raw.relevance_score === "number" ? raw.relevance_score : null),
+            retrievalMethod:
+              source.retrievalMethod ??
+              (typeof raw.retrieval_method === "string" ? raw.retrieval_method : null),
+            sourceOrigin:
+              source.sourceOrigin ??
+              (typeof raw.source_origin === "string" ? raw.source_origin : origin),
+            sourceProvider:
+              source.sourceProvider ??
+              (typeof raw.source_provider === "string" ? raw.source_provider : null),
+            localPath:
+              source.localPath ??
+              (typeof raw.local_path === "string" ? raw.local_path : null),
+          };
+        })
+      : [],
+  ]);
+}
+
+function providerValue(status: Record<string, unknown>, key: string) {
+  const value = status[key];
+  if (value === null || value === undefined) {
+    return "not reported";
+  }
+  if (typeof value === "boolean") {
+    return value ? "yes" : "no";
+  }
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+  return String(value);
 }
 
 function readStringList(
@@ -2441,12 +2498,12 @@ export function CaseDetailView({
                           {run.legalAuthorityWarning}
                         </p>
                         <div className="mt-3 flex flex-wrap gap-2">
-                          {Object.entries(run.sourcesByOrigin).map(([origin, count]) => (
+                          {Object.entries(run.sourcesByOrigin).map(([origin, group]) => (
                             <span
                               className="rounded-full border border-line px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground"
                               key={`${run.runId}-${origin}`}
                             >
-                              {origin.replaceAll("_", " ")}: {count}
+                              {origin.replaceAll("_", " ")}: {sourceGroupCount(group)}
                             </span>
                           ))}
                           <span className="rounded-full border border-line px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
@@ -2467,6 +2524,65 @@ export function CaseDetailView({
                         }
                       />
                     </div>
+
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      <div className="rounded-2xl border border-line bg-white/[0.03] p-4">
+                        <p className="text-xs uppercase tracking-[0.2em] text-subtle">
+                          Provider status
+                        </p>
+                        <div className="mt-3 grid gap-2 text-sm leading-6 text-muted-foreground md:grid-cols-2">
+                          <p>Local retrieval: {providerValue(run.providerStatus, "localRetrievalUsed")}</p>
+                          <p>OpenAI web: {providerValue(run.providerStatus, "openaiWebSearchUsed")}</p>
+                          <p>LLM research: {providerValue(run.providerStatus, "llmUsedForResearch")}</p>
+                          <p>LLM drafting: {providerValue(run.providerStatus, "llmUsedForDrafting")}</p>
+                          <p>Search provider: {providerValue(run.providerStatus, "searchProvider")}</p>
+                          <p>Model: {providerValue(run.providerStatus, "llmModel")}</p>
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-line bg-white/[0.03] p-4">
+                        <p className="text-xs uppercase tracking-[0.2em] text-subtle">
+                          Workflow stages
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {[
+                            "Reading case",
+                            "Detecting legal issues",
+                            "Planning research",
+                            "Searching local corpus",
+                            run.liveWebUsed ? "Searching live web" : "Live web fallback",
+                            "Validating sources",
+                            "Writing research memo",
+                            run.generatedDraft ? "Drafting legal document" : "Draft skipped",
+                            "Critic review",
+                            run.pdfPath ? "PDF generated" : "Markdown generated",
+                          ].map((stage) => (
+                            <span
+                              className="rounded-full border border-line px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground"
+                              key={`${run.runId}-${stage}`}
+                            >
+                              {stage}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {run.privacyNotice ? (
+                      <InlineFeedback message={run.privacyNotice} tone="info" />
+                    ) : null}
+
+                    {run.warnings?.length ? (
+                      <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4">
+                        <p className="text-xs uppercase tracking-[0.2em] text-amber-200">
+                          Workflow warnings
+                        </p>
+                        <ul className="mt-3 space-y-2 text-sm leading-6 text-amber-100/90">
+                          {run.warnings.slice(0, 8).map((warning) => (
+                            <li key={`${run.runId}-warning-${warning}`}>{warning}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
 
                     <div className="grid gap-3 lg:grid-cols-3">
                       <div className="rounded-2xl border border-line bg-white/[0.03] p-4">
@@ -2543,28 +2659,47 @@ export function CaseDetailView({
                       <p className="text-xs uppercase tracking-[0.2em] text-subtle">
                         Retrieved Pakistani legal sources
                       </p>
-                      {run.retrievedSources.length ? (
-                        <div className="mt-3 grid gap-3 lg:grid-cols-2">
-                          {run.retrievedSources.slice(0, 6).map((source) => (
-                            <div
-                              key={`${run.runId}-${source.id ?? source.title}`}
-                              className="rounded-2xl border border-line bg-panel p-4"
-                            >
-                              <p className="text-sm font-semibold text-foreground">
-                                {source.title}
-                              </p>
-                              <p className="mt-1 text-xs uppercase tracking-[0.18em] text-subtle">
-                                {source.sourceType}
-                                {source.citation ? ` / ${source.citation}` : ""}
-                                {source.sourceOrigin
-                                  ? ` / ${source.sourceOrigin.replaceAll("_", " ")}`
-                                  : ""}
-                              </p>
-                              <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                                {source.excerpt}
-                              </p>
-                            </div>
-                          ))}
+                      {sourceGroupEntries(run.sourcesByOrigin).some(([, sources]) => sources.length) ? (
+                        <div className="mt-3 space-y-4">
+                          {sourceGroupEntries(run.sourcesByOrigin).map(([origin, sources]) =>
+                            sources.length ? (
+                              <div key={`${run.runId}-origin-${origin}`}>
+                                <p className="text-xs uppercase tracking-[0.2em] text-subtle">
+                                  {origin.replaceAll("_", " ")}
+                                </p>
+                                <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                                  {sources.slice(0, 6).map((source) => (
+                                    <div
+                                      key={`${run.runId}-${origin}-${source.id ?? source.title}`}
+                                      className="rounded-2xl border border-line bg-panel p-4"
+                                    >
+                                      <p className="text-sm font-semibold text-foreground">
+                                        {source.title}
+                                      </p>
+                                      <p className="mt-1 text-xs uppercase tracking-[0.18em] text-subtle">
+                                        {source.sourceType}
+                                        {source.citation ? ` / ${source.citation}` : ""}
+                                        {source.domain ? ` / ${source.domain}` : ""}
+                                      </p>
+                                      <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                                        {source.excerpt}
+                                      </p>
+                                      {source.url ? (
+                                        <a
+                                          className="mt-3 inline-flex text-xs font-semibold uppercase tracking-[0.18em] text-accent"
+                                          href={source.url}
+                                          rel="noreferrer"
+                                          target="_blank"
+                                        >
+                                          Open source
+                                        </a>
+                                      ) : null}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : null,
+                          )}
                         </div>
                       ) : (
                         <p className="mt-3 text-sm leading-6 text-muted-foreground">
@@ -2588,6 +2723,19 @@ export function CaseDetailView({
                             {run.generatedDraft.draftType.replaceAll("_", " ")}
                           </span>
                         </div>
+                        <Button
+                          className="mt-4"
+                          onClick={() => {
+                            void navigator.clipboard?.writeText(
+                              run.generatedDraft?.draftMarkdown ?? "",
+                            );
+                          }}
+                          size="sm"
+                          type="button"
+                          variant="secondary"
+                        >
+                          Copy draft text
+                        </Button>
                         <pre className="mt-4 max-h-[420px] overflow-auto whitespace-pre-wrap rounded-2xl border border-line bg-panel p-4 text-sm leading-6 text-muted-foreground">
                           {run.generatedDraft.draftMarkdown}
                         </pre>

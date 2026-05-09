@@ -32,19 +32,49 @@ def render_research_markdown(response_data: dict[str, Any]) -> str:
     critic = response_data.get("critic_report") or {}
     drafting = response_data.get("drafting_instructions") or {}
     provider_status = response_data.get("provider_status") or {}
+    privacy_notice = response_data.get("privacy_notice") or provider_status.get("privacyNotice") or ""
+    sources_by_origin = response_data.get("sources_by_origin") or {}
     lines = [
         "# AI Legal Chambers Research & Draft Output",
         "",
         f"Run ID: {response_data.get('run_id')}",
         f"Case ID: {response_data.get('case_id')}",
         f"Status: {response_data.get('status')}",
+        f"Created at: {response_data.get('created_at')}",
+        f"Completed at: {response_data.get('completed_at')}",
         "",
         f"> {response_data.get('legal_authority_warning') or memo.get('legal_authority_warning') or ''}",
         "",
+        f"> Privacy notice: {privacy_notice}",
+        "",
     ]
+    lines.extend(["## Provider Status", ""])
+    for key, value in provider_status.items():
+        lines.append(f"- {key}: {value}")
+    lines.append("")
     lines.extend(_line_items("Detected Issues", response_data.get("detected_issues", [])))
     lines.extend(_line_items("Research Query Plan", response_data.get("query_plan", [])))
-    lines.extend(_line_items("Sources Used", memo.get("source_list", [])))
+    lines.extend(["## Sources Used By Origin", ""])
+    if sources_by_origin:
+        for origin, values in sources_by_origin.items():
+            lines.append(f"### {str(origin).replace('_', ' ').title()}")
+            lines.append("")
+            if isinstance(values, list) and values:
+                for source in values:
+                    title = source.get("title") if isinstance(source, dict) else str(source)
+                    citation = source.get("citation") if isinstance(source, dict) else ""
+                    url = source.get("url") if isinstance(source, dict) else ""
+                    confidence = source.get("confidence") if isinstance(source, dict) else ""
+                    lines.append(f"- {title}{f' | {citation}' if citation else ''}{f' | {url}' if url else ''}{f' | confidence {confidence}' if confidence != '' else ''}")
+            elif isinstance(values, int):
+                lines.append(f"- {values} source(s).")
+            else:
+                lines.append("- Not available.")
+            lines.append("")
+    else:
+        lines.append("- Not available.")
+        lines.append("")
+    lines.extend(_line_items("Source List", memo.get("source_list", [])))
     lines.extend(_line_items("Factual Basis", memo.get("factual_basis", [])))
     lines.extend(_line_items("Legal Issues", memo.get("legal_issues", [])))
     lines.extend(_line_items("Applicable Statutes", memo.get("applicable_statutes", [])))
@@ -83,10 +113,7 @@ def render_research_markdown(response_data: dict[str, Any]) -> str:
             lines.append(f"- {title}: {item}")
     lines.append("")
     lines.extend(_line_items("Lawyer Review Checklist", response_data.get("lawyer_review_checklist", [])))
-    lines.extend(["## Provider Trace", ""])
-    for key, value in provider_status.items():
-        lines.append(f"- {key}: {value}")
-    lines.append("")
+    lines.extend(_line_items("Warnings", response_data.get("warnings", [])))
     return "\n".join(lines).strip() + "\n"
 
 

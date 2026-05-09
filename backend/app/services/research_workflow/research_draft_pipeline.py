@@ -27,7 +27,7 @@ from app.services.research_workflow.research_agent import (
     generate_structured_research_memo,
 )
 from app.services.research_workflow.research_artifacts import write_research_artifacts
-from app.services.llm.provider import get_llm_health
+from app.services.llm.provider import PRIVACY_NOTICE, get_llm_health
 
 
 def _summarize_context(context: dict[str, Any]) -> str:
@@ -84,6 +84,8 @@ def _response_payload(run: ResearchRun) -> dict[str, Any]:
         "pdf_path": run.pdf_path,
         "markdown_path": run.markdown_path,
         "legal_authority_warning": LEGAL_RESEARCH_WARNING,
+        "privacy_notice": PRIVACY_NOTICE,
+        "warnings": run.warnings_json or [],
         "created_at": run.created_at,
         "completed_at": run.completed_at,
     }
@@ -112,29 +114,49 @@ def research_run_summary(run: ResearchRun) -> dict[str, Any]:
     }
 
 
-def _sources_by_origin(sources: list[dict[str, Any]]) -> dict[str, int]:
-    counts: dict[str, int] = {}
+def _sources_by_origin(sources: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    groups: dict[str, list[dict[str, Any]]] = {
+        "local_corpus": [],
+        "live_web": [],
+        "uploaded_documents": [],
+        "fallback": [],
+    }
     for source in sources:
         origin = str(source.get("source_origin") or "unknown")
-        counts[origin] = counts.get(origin, 0) + 1
-    return counts
+        groups.setdefault(origin, []).append(source)
+    return groups
 
 
-def _provider_status(*, live_web_used: bool, llm_research_used: bool, llm_drafting_used: bool) -> dict[str, Any]:
+def _provider_status(
+    *,
+    live_web_used: bool,
+    llm_research_used: bool,
+    llm_drafting_used: bool,
+    retrieval_status: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     llm_health = get_llm_health()
     web_health = get_live_web_search_health()
+    retrieval_status = retrieval_status or {}
     return {
+        "localRetrievalAvailable": True,
         "localRetrievalUsed": True,
+        "retrieval": retrieval_status,
         "liveWebSearch": web_health,
+        "liveWebSearchEnabled": bool(web_health.get("enabled")),
+        "liveWebSearchAvailable": bool(web_health.get("available")),
+        "searchProvider": "openai",
+        "openaiWebSearchUsed": live_web_used,
         "llm": llm_health,
+        "llmEnabled": bool(llm_health.get("enabled")),
+        "llmAvailable": bool(llm_health.get("available")),
+        "llmModel": llm_health.get("model"),
         "externalSearchUsed": live_web_used,
         "externalLlmUsed": bool(llm_research_used or llm_drafting_used),
         "llmUsedForResearch": llm_research_used,
         "llmUsedForDrafting": llm_drafting_used,
-        "privacyNotice": (
-            "When enabled, selected case text, research queries, and retrieved sources may be sent "
-            "to configured external providers."
-        ),
+        "pdfAvailable": True,
+        "artifactDirWritable": True,
+        "privacyNotice": PRIVACY_NOTICE,
     }
 
 
@@ -223,17 +245,20 @@ def run_research_draft_pipeline(
         include_live_web = bool(request.use_live_web and web_health.get("available"))
         if request.use_live_web and not include_live_web:
             warnings.append(str(web_health.get("reason") or "Live web search unavailable; local corpus used."))
-        sources = retrieve_pakistani_legal_sources(
+        retrieval_bundle = retrieve_pakistani_legal_sources(
             db,
             query_plan,
             max_sources=request.max_sources,
             include_live_web=include_live_web,
+            use_openai_web_search=True,
             max_live_sources=request.max_live_sources,
         )
+        sources = list(retrieval_bundle.get("sources", []))
+        warnings.extend(str(item) for item in retrieval_bundle.get("retrieval_warnings", []))
         if not sources:
             warnings.append("No Pakistani legal sources were retrieved; memo marks this as a research gap.")
-        source_counts = _sources_by_origin(sources)
-        live_web_used = bool(source_counts.get("live_web"))
+        source_groups = retrieval_bundle.get("sources_by_origin") or _sources_by_origin(sources)
+        live_web_used = bool(source_groups.get("live_web"))
         if include_live_web and not live_web_used:
             warnings.append("Live web search was enabled, but no live web legal source was retained after ranking.")
 
@@ -274,7 +299,7 @@ def run_research_draft_pipeline(
         run.generated_draft_json = generated_draft or {}
         run.critic_report_json = critic_report
         run.drafting_instructions_json = drafting
-        run.sources_by_origin_json = source_counts
+        run.sources_by_origin_json = source_groups
         run.live_web_used = live_web_used
         run.llm_used_for_research = llm_research_used
         run.llm_used_for_drafting = llm_drafting_used
@@ -282,6 +307,7 @@ def run_research_draft_pipeline(
             live_web_used=live_web_used,
             llm_research_used=llm_research_used,
             llm_drafting_used=llm_drafting_used,
+            retrieval_status=retrieval_bundle.get("provider_status", {}),
         )
         run.warnings_json = warnings
         run.completed_at = datetime.now(UTC)

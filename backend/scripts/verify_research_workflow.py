@@ -55,6 +55,7 @@ def main() -> None:
     _check("drafting_instructions_present", bool(payload.get("drafting_instructions")), "")
     _check("sources_by_origin_present", bool(payload.get("sources_by_origin")), str(payload.get("sources_by_origin")))
     _check("warning_present", payload.get("legal_authority_warning") == LEGAL_RESEARCH_WARNING, "")
+    _check("privacy_notice_present", "OpenAI API" in str(payload.get("privacy_notice") or payload.get("provider_status")), "")
 
     markdown_path = payload.get("markdown_path")
     _check("markdown_generated", bool(markdown_path) and Path(markdown_path).exists(), str(markdown_path))

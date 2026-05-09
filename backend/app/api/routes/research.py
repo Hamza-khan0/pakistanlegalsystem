@@ -18,7 +18,7 @@ from app.schemas.research import (
 )
 from app.services import cases as case_service
 from app.services import research as research_service
-from app.services.llm.provider import get_llm_health
+from app.services.llm.provider import PRIVACY_NOTICE, get_llm_health
 from app.services.ml.training.imported_legal_issue import get_legal_issue_model_health
 from app.services.research_workflow.research_artifacts import ARTIFACT_ROOT
 from app.services.research_workflow.research_draft_pipeline import (
@@ -89,13 +89,10 @@ def get_research_health() -> ResearchHealthRead:
         llm_enabled=bool(llm_health.get("enabled")),
         llm_available=bool(llm_health.get("available")),
         llm_model=str(llm_health.get("model") or ""),
-        llm_configured=bool(llm_health.get("available")),
+        llm_configured=bool(llm_health.get("api_key_configured")),
         pdf_available=True,
         artifact_directory_writable=artifact_writable,
-        privacy_notice=(
-            "When enabled, selected case text, research queries, and retrieved sources may be sent "
-            "to configured external providers."
-        ),
+        privacy_notice=PRIVACY_NOTICE,
         legal_authority_warning=LEGAL_RESEARCH_WARNING,
     )
 

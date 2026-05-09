@@ -78,6 +78,7 @@ def main() -> None:
     _check("response_contains_critic", bool(created_payload.get("criticReport")), "")
     _check("response_contains_provider_status", bool(created_payload.get("providerStatus")), "")
     _check("response_contains_sources_by_origin", bool(created_payload.get("sourcesByOrigin")), str(created_payload.get("sourcesByOrigin")))
+    _check("response_contains_privacy_notice", "OpenAI API" in str(created_payload.get("privacyNotice") or created_payload.get("providerStatus")), "")
 
     fetched_status, fetched_body, _ = _request("GET", f"/api/research/runs/{run_id}")
     _check("fetch_run_ok", fetched_status == 200, fetched_body[:300].decode("utf-8", "replace"))
@@ -112,6 +113,7 @@ def main() -> None:
                 "status": created_payload.get("status"),
                 "sourceCount": len(created_payload.get("retrievedSources", [])),
                 "sourcesByOrigin": created_payload.get("sourcesByOrigin"),
+                "warnings": created_payload.get("warnings"),
                 "liveWebUsed": created_payload.get("liveWebUsed"),
                 "llmUsedForDrafting": created_payload.get("llmUsedForDrafting"),
                 "pdfPath": created_payload.get("pdfPath"),

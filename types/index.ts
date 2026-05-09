@@ -379,12 +379,14 @@ export interface ResearchWorkflowResponse {
   liveWebUsed: boolean;
   llmUsedForResearch: boolean;
   llmUsedForDrafting: boolean;
-  sourcesByOrigin: Record<string, number>;
+  sourcesByOrigin: Record<string, RetrievedLegalSource[] | number>;
   lawyerReviewChecklist: string[];
   providerStatus: Record<string, unknown>;
   pdfPath?: string | null;
   markdownPath?: string | null;
   legalAuthorityWarning: string;
+  privacyNotice?: string;
+  warnings?: string[];
   createdAt: string;
   completedAt?: string | null;
 }

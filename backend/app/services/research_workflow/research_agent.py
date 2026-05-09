@@ -276,9 +276,22 @@ Legal warning:
 {LEGAL_RESEARCH_WARNING}
 """
     try:
-        memo = generate_json(prompt, "StructuredResearchMemo", temperature=0.15)
+        result = generate_json(
+            prompt,
+            schema_name="StructuredResearchMemo",
+            temperature=0.15,
+            max_output_tokens=3500,
+        )
+        if not result.get("ok") or not isinstance(result.get("json"), dict):
+            raise RuntimeError(str(result.get("error") or "LLM did not return valid research JSON."))
+        memo = result["json"]
         memo = _validate_llm_memo(memo, sources)
         memo["_llm_used"] = True
+        memo["_llm_metadata"] = {
+            "provider": result.get("provider"),
+            "model": result.get("model"),
+            "duration_ms": result.get("duration_ms"),
+        }
         return memo
     except Exception as exc:
         fallback["_llm_used"] = False

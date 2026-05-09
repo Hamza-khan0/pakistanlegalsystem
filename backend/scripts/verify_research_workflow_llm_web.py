@@ -61,11 +61,12 @@ def main() -> None:
     _check("critic_report", bool(payload.get("critic_report")), "")
     _check("lawyer_checklist", bool(payload.get("lawyer_review_checklist")), "")
     _check("warning", payload.get("legal_authority_warning") == LEGAL_RESEARCH_WARNING, "")
+    _check("privacy_notice", "OpenAI API" in str(payload.get("privacy_notice") or payload.get("provider_status", {})), "")
     _check("markdown_artifact", bool(payload.get("markdown_path")) and Path(payload["markdown_path"]).exists(), str(payload.get("markdown_path")))
     if web_health.get("available"):
         _check(
             "live_web_used_or_warning",
-            bool(payload.get("live_web_used")) or "live web" in json.dumps(payload.get("provider_status", {})).casefold(),
+            bool(payload.get("live_web_used")) or "openai" in json.dumps(payload.get("provider_status", {})).casefold(),
             json.dumps(payload.get("provider_status", {}))[:500],
         )
     if llm_health.get("available"):
@@ -100,6 +101,7 @@ def main() -> None:
                 "runId": payload.get("run_id"),
                 "status": payload.get("status"),
                 "sourcesByOrigin": payload.get("sources_by_origin"),
+                "warnings": payload.get("warnings"),
                 "liveWebUsed": payload.get("live_web_used"),
                 "llmUsedForResearch": payload.get("llm_used_for_research"),
                 "llmUsedForDrafting": payload.get("llm_used_for_drafting"),

@@ -7,7 +7,11 @@ from sqlalchemy.orm import Session
 from app.models.enums import ChamberTaskType
 from app.services.knowledge.hybrid_retrieval import hybrid_search_legal_sources
 from app.services.knowledge.retrieval import RetrievedLegalSource, search_legal_sources
-from app.services.research_workflow.live_web_search import search_live_pakistani_legal_sources
+from app.services.research_workflow.live_web_search import (
+    get_live_web_search_health,
+    search_live_pakistani_legal_sources,
+)
+from app.services.research_workflow.source_validation import validate_sources
 
 
 def _confidence(score: float | None) -> float | None:
@@ -50,7 +54,13 @@ def _serialize_source(source: RetrievedLegalSource) -> dict[str, Any]:
 
 
 def _serialize_live_source(source: dict[str, Any]) -> dict[str, Any]:
-    text = str(source.get("fetched_text") or source.get("snippet") or "")
+    text = str(
+        source.get("fetched_text")
+        or source.get("excerpt")
+        or source.get("snippet")
+        or source.get("web_search_summary")
+        or ""
+    )
     excerpt = " ".join(text.split())[:700]
     return {
         "id": source.get("url"),
@@ -69,10 +79,13 @@ def _serialize_live_source(source: dict[str, Any]) -> dict[str, Any]:
         "source_origin": "live_web",
         "domain": source.get("domain"),
         "query": source.get("query"),
-        "source_provider": source.get("source_provider"),
+        "source_provider": source.get("source_provider") or source.get("provider"),
+        "provider": source.get("provider") or "openai_web_search",
         "snippet": source.get("snippet"),
         "fetched": source.get("fetched", False),
         "fetch_error": source.get("fetch_error", ""),
+        "validation": source.get("validation", {}),
+        "web_search_summary": source.get("web_search_summary"),
     }
 
 
@@ -90,11 +103,13 @@ def retrieve_pakistani_legal_sources(
     max_sources: int = 12,
     *,
     include_live_web: bool = True,
+    use_openai_web_search: bool = True,
     max_live_sources: int = 8,
-) -> list[dict[str, Any]]:
+) -> dict[str, Any]:
     ranked: list[RetrievedLegalSource] = []
     seen: set[tuple[str, str, str]] = set()
     per_query_limit = max(3, min(max_sources, 6))
+    retrieval_warnings: list[str] = []
 
     for query_item in query_plan:
         query = str(query_item.get("query") or "").strip()
@@ -108,13 +123,18 @@ def retrieve_pakistani_legal_sources(
                 limit=per_query_limit,
                 ensure_index=False,
             )
-        except Exception:
-            bundle = search_legal_sources(
-                db,
-                query=query,
-                task_type=ChamberTaskType.RESEARCH_MEMO,
-                limit=per_query_limit,
-            )
+        except Exception as exc:
+            retrieval_warnings.append(f"Hybrid retrieval failed for one query; lexical fallback used. {type(exc).__name__}")
+            try:
+                bundle = search_legal_sources(
+                    db,
+                    query=query,
+                    task_type=ChamberTaskType.RESEARCH_MEMO,
+                    limit=per_query_limit,
+                )
+            except Exception as fallback_exc:
+                retrieval_warnings.append(f"Local retrieval failed for one query. {type(fallback_exc).__name__}")
+                continue
 
         for source in bundle.sources:
             key = _source_key(source)
@@ -133,14 +153,25 @@ def retrieve_pakistani_legal_sources(
         ),
         reverse=True,
     )
-    normalized = [_serialize_source(source) for source in ranked[: max_sources * 2]]
+    local_sources = validate_sources([_serialize_source(source) for source in ranked[: max_sources * 2]])
+    normalized = list(local_sources)
 
-    if include_live_web:
-        live_sources = [
-            _serialize_live_source(source)
-            for source in search_live_pakistani_legal_sources(query_plan, max_sources=max_live_sources)
-        ]
-        normalized.extend(live_sources)
+    web_health = get_live_web_search_health()
+    live_sources: list[dict[str, Any]] = []
+    if include_live_web and use_openai_web_search:
+        if not web_health.get("available"):
+            retrieval_warnings.append(str(web_health.get("reason") or "OpenAI web search unavailable."))
+        else:
+            try:
+                live_sources = validate_sources(
+                    [
+                        _serialize_live_source(source)
+                        for source in search_live_pakistani_legal_sources(query_plan, max_sources=max_live_sources)
+                    ]
+                )
+                normalized.extend(live_sources)
+            except Exception as exc:
+                retrieval_warnings.append(f"OpenAI web search failed; local sources retained. {type(exc).__name__}")
 
     deduped: list[dict[str, Any]] = []
     seen_keys: set[tuple[str, str, str]] = set()
@@ -151,7 +182,7 @@ def retrieve_pakistani_legal_sources(
         seen_keys.add(key)
         deduped.append(source)
 
-    origin_boost = {"local_corpus": 0.08, "live_web": 0.0}
+    origin_boost = {"local_corpus": 0.08, "live_web": 0.0, "uploaded_documents": 0.04, "fallback": -0.1}
     deduped.sort(
         key=lambda item: (
             float(item.get("confidence") or 0) + origin_boost.get(str(item.get("source_origin")), 0),
@@ -159,4 +190,27 @@ def retrieve_pakistani_legal_sources(
         ),
         reverse=True,
     )
-    return deduped[:max_sources]
+    top_sources = deduped[:max_sources]
+    sources_by_origin: dict[str, list[dict[str, Any]]] = {
+        "local_corpus": [],
+        "live_web": [],
+        "uploaded_documents": [],
+        "fallback": [],
+    }
+    for source in top_sources:
+        origin = str(source.get("source_origin") or "fallback")
+        sources_by_origin.setdefault(origin, []).append(source)
+
+    return {
+        "sources": top_sources,
+        "sources_by_origin": sources_by_origin,
+        "retrieval_warnings": retrieval_warnings,
+        "provider_status": {
+            "localRetrievalAvailable": True,
+            "liveWebSearchEnabled": bool(web_health.get("enabled")),
+            "liveWebSearchAvailable": bool(web_health.get("available")),
+            "searchProvider": "openai",
+            "openaiWebSearchUsed": bool(sources_by_origin.get("live_web")),
+            "openaiWebSearchHealth": web_health,
+        },
+    }

@@ -362,16 +362,12 @@ LLM_PROVIDER=local
 LLM_PROVIDER_LABEL=Chamber Local Intelligence
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-4o-mini
-LIVE_WEB_SEARCH_ENABLED=true
-LLM_DRAFTING_ENABLED=true
-SEARCH_PROVIDER=auto
-TAVILY_API_KEY=
-SERPAPI_API_KEY=
-BING_SEARCH_API_KEY=
-GOOGLE_CSE_API_KEY=
-GOOGLE_CSE_ID=
+OPENAI_WEB_SEARCH_MODEL=gpt-4o-mini
+LIVE_WEB_SEARCH_ENABLED=false
+LLM_DRAFTING_ENABLED=false
+SEARCH_PROVIDER=openai
 WEB_SEARCH_MAX_RESULTS=8
-WEB_SEARCH_TIMEOUT_SECONDS=20
+WEB_SEARCH_TIMEOUT_SECONDS=30
 WEB_SOURCE_FETCH_TIMEOUT_SECONDS=20
 TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe
 OCR_DEFAULT_LANGUAGES=eng
@@ -391,15 +387,28 @@ NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
 INTERNAL_API_BASE_URL=http://127.0.0.1:8000
 ```
 
-### External research providers
+### OpenAI-assisted research and drafting
 
-The Research & Draft workflow works without external providers. If no keys are configured, it uses local corpus retrieval and deterministic memo/draft generation.
+The Research & Draft workflow works without external providers. If no OpenAI key is configured, it uses local corpus retrieval and deterministic memo/draft generation.
 
-To enable LLM-assisted research and drafting, set `OPENAI_API_KEY`. The default model is `gpt-4o-mini`, overrideable with `OPENAI_MODEL`.
+To enable LLM-assisted research and drafting:
 
-To enable live web legal search, configure one provider key. Provider priority is Tavily, SerpAPI, Bing, then Google CSE when `SEARCH_PROVIDER=auto`.
+```bash
+OPENAI_API_KEY=sk-...
+LLM_DRAFTING_ENABLED=true
+OPENAI_MODEL=gpt-4o-mini
+```
 
-Keep all provider keys server-side only. The frontend receives provider availability and privacy warnings, never the secret values. When enabled, selected case text, research queries, and retrieved source excerpts may be sent to the configured external providers.
+To enable live web legal search through the OpenAI Responses API web search tool:
+
+```bash
+OPENAI_API_KEY=sk-...
+LIVE_WEB_SEARCH_ENABLED=true
+SEARCH_PROVIDER=openai
+OPENAI_WEB_SEARCH_MODEL=gpt-4o-mini
+```
+
+No Tavily, SerpAPI, Bing, or Google CSE key is required. Keep `OPENAI_API_KEY` server-side only. The frontend receives provider availability and privacy warnings, never secret values. When enabled, selected case text, research queries, and retrieved source excerpts may be sent to the configured OpenAI API.
 
 ### Urdu OCR
 

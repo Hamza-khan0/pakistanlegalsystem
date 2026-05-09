@@ -246,9 +246,22 @@ draft_type, title, draft_markdown, sections, authorities_used, facts_used,
 assumptions, missing_information, lawyer_review_checklist, legal_authority_warning.
 """
     try:
-        draft = generate_json(prompt, "GeneratedLegalDraft", temperature=0.18)
+        result = generate_json(
+            prompt,
+            schema_name="GeneratedLegalDraft",
+            temperature=0.18,
+            max_output_tokens=4500,
+        )
+        if not result.get("ok") or not isinstance(result.get("json"), dict):
+            raise RuntimeError(str(result.get("error") or "LLM did not return valid draft JSON."))
+        draft = result["json"]
         draft = _validate_draft(draft, sources, fallback)
         draft["_llm_used"] = True
+        draft["_llm_metadata"] = {
+            "provider": result.get("provider"),
+            "model": result.get("model"),
+            "duration_ms": result.get("duration_ms"),
+        }
         return draft
     except Exception as exc:
         fallback["_llm_warning"] = f"LLM draft generation failed; deterministic skeleton used. {type(exc).__name__}"
