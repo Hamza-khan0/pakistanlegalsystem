@@ -4,10 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
+    "dev:backend": "cd backend && python scripts/dev_start_backend.py",
     "dev:turbo": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "verify:frontend": "npm run lint && npm run build",
+    "verify:research": "cd backend && python scripts/verify_cors_research.py && python scripts/verify_case_research_ui_flow.py"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

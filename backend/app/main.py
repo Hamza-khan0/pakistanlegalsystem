@@ -10,6 +10,20 @@ from app.api.router import api_router
 from app.core.config import settings
 
 
+def _health_payload() -> dict[str, object]:
+    return {
+        "ok": True,
+        "status": "ok",
+        "service": "AI Legal Chambers Backend",
+        "version": settings.project_version,
+        "environment": "local",
+        "host": settings.backend_host,
+        "port": settings.backend_port,
+        "apiPrefix": settings.api_prefix,
+        "corsOrigins": settings.cors_origin_list,
+    }
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.project_name,
@@ -41,8 +55,12 @@ def create_app() -> FastAPI:
         )
 
     @app.get("/health", tags=["health"])
-    async def healthcheck() -> dict[str, str]:
-        return {"status": "ok"}
+    async def healthcheck() -> dict[str, object]:
+        return _health_payload()
+
+    @app.get(f"{settings.api_prefix}/health", tags=["health"])
+    async def api_healthcheck() -> dict[str, object]:
+        return _health_payload()
 
     app.include_router(api_router, prefix=settings.api_prefix)
 

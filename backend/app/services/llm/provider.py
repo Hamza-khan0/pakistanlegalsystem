@@ -831,6 +831,9 @@ class LocalChamberProvider(ChamberGenerationProvider):
 @lru_cache
 def get_generation_provider() -> ChamberGenerationProvider:
     provider_name = settings.llm_provider.strip().casefold()
-    if provider_name == "local":
+    if provider_name in {"local", "openai"}:
+        # The newer Research & Draft pipeline uses the safe OpenAI provider above.
+        # Legacy chamber/intelligence agents keep their deterministic local provider
+        # so enabling OPENAI_API_KEY cannot crash older MVP workflows.
         return LocalChamberProvider()
     raise ValueError(f"Unsupported LLM provider '{settings.llm_provider}'.")

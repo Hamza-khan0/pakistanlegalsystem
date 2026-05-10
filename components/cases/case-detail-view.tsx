@@ -3,6 +3,7 @@
 import type { FormEvent, HTMLInputTypeAttribute } from "react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ArrowUpRight, Scale, Sparkles, X } from "lucide-react";
 
 import { ChamberRunPanel } from "@/components/chamber/chamber-run-panel";
@@ -17,6 +18,7 @@ import { SectionCard } from "@/components/common/section-card";
 import { StatusBadge } from "@/components/common/status-badge";
 import { DocumentPreview } from "@/components/documents/document-preview";
 import { DocumentTable } from "@/components/documents/document-table";
+import { EditableDraftCard } from "@/components/research/editable-draft-card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -44,7 +46,7 @@ import {
   getRun,
   listCaseResearchRuns,
   predictCase,
-  runResearchWorkflow,
+  runCaseResearchDraft,
   updateDraft,
   updateNote,
 } from "@/lib/api/client";
@@ -455,7 +457,12 @@ export function CaseDetailView({
   datasetReadiness,
   caseQualitySummary,
 }: CaseDetailViewProps) {
-  const [activeTab, setActiveTab] = useState("overview");
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState(
+    searchParams.get("research") === "1" || searchParams.get("runs") === "1"
+      ? "research"
+      : "overview",
+  );
   const [caseState, setCaseState] = useState(caseItem);
   const [documentsState] = useState(documents);
   const [timelineState, setTimelineState] = useState(sortTimelineEntries(timeline));
@@ -965,8 +972,7 @@ export function CaseDetailView({
     setResearchWorkflowError(null);
 
     try {
-      const run = await runResearchWorkflow({
-        caseId: caseState.id,
+      const run = await runCaseResearchDraft(caseState.id, {
         draftType: researchWorkflowOptions.draftType,
         focusIssues: caseState.issues.slice(0, 4),
         includeDocuments: true,
@@ -1001,6 +1007,12 @@ export function CaseDetailView({
     } finally {
       setResearchWorkflowSaving(false);
     }
+  }
+
+  function handleResearchRunUpdated(updatedRun: ResearchWorkflowResponse) {
+    setResearchWorkflowRuns((current) =>
+      current.map((run) => (run.runId === updatedRun.runId ? updatedRun : run)),
+    );
   }
 
   function openEditDraft(draft: DraftArtifact) {
@@ -1428,6 +1440,18 @@ export function CaseDetailView({
             </div>
 
             <div className="flex flex-wrap gap-3">
+              <Button
+                disabled={researchWorkflowSaving}
+                onClick={handleResearchWorkflowRun}
+              >
+                {researchWorkflowSaving ? "Running Research & Draft..." : "Research & Draft"}
+              </Button>
+              <Button
+                onClick={() => setActiveTab("research")}
+                variant="outline"
+              >
+                View research runs
+              </Button>
               <Button onClick={openCreateNote} variant="secondary">
                 Add note
               </Button>
@@ -2708,51 +2732,10 @@ export function CaseDetailView({
                       )}
                     </div>
 
-                    {run.generatedDraft ? (
-                      <div className="rounded-2xl border border-line bg-white/[0.03] p-4">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div>
-                            <p className="text-xs uppercase tracking-[0.2em] text-subtle">
-                              Generated legal draft
-                            </p>
-                            <h4 className="mt-1 text-base font-semibold text-foreground">
-                              {run.generatedDraft.title}
-                            </h4>
-                          </div>
-                          <span className="rounded-full border border-line px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                            {run.generatedDraft.draftType.replaceAll("_", " ")}
-                          </span>
-                        </div>
-                        <Button
-                          className="mt-4"
-                          onClick={() => {
-                            void navigator.clipboard?.writeText(
-                              run.generatedDraft?.draftMarkdown ?? "",
-                            );
-                          }}
-                          size="sm"
-                          type="button"
-                          variant="secondary"
-                        >
-                          Copy draft text
-                        </Button>
-                        <pre className="mt-4 max-h-[420px] overflow-auto whitespace-pre-wrap rounded-2xl border border-line bg-panel p-4 text-sm leading-6 text-muted-foreground">
-                          {run.generatedDraft.draftMarkdown}
-                        </pre>
-                        {run.lawyerReviewChecklist.length ? (
-                          <div className="mt-4 rounded-2xl border border-line bg-panel-highlight p-4">
-                            <p className="text-xs uppercase tracking-[0.2em] text-subtle">
-                              Lawyer review checklist
-                            </p>
-                            <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
-                              {run.lawyerReviewChecklist.slice(0, 8).map((item) => (
-                                <li key={`${run.runId}-check-${item}`}>{item}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : null}
+                    <EditableDraftCard
+                      onRunUpdated={handleResearchRunUpdated}
+                      run={run}
+                    />
 
                     <div className="rounded-2xl border border-line bg-white/[0.03] p-4">
                       <p className="text-xs uppercase tracking-[0.2em] text-subtle">
@@ -2776,6 +2759,12 @@ export function CaseDetailView({
                     </div>
 
                     <div className="flex flex-wrap gap-2">
+                      <Link
+                        className={buttonVariants({ size: "sm" })}
+                        href={`/research/runs/${run.runId}`}
+                      >
+                        Open run
+                      </Link>
                       <a
                         className={buttonVariants({ size: "sm", variant: "secondary" })}
                         href={getResearchMarkdownUrl(run.runId)}

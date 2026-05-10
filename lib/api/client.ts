@@ -28,9 +28,13 @@ import type {
   NotificationItem,
   ResearchNote,
   ResearchHealth,
+  BackendHealth,
+  ResearchDraftResponse,
   ResearchRunSummary,
   ResearchWorkflowRequest,
   ResearchWorkflowResponse,
+  PdfMode,
+  PdfRegenerateResponse,
   TimelineEntry,
   MlDataset,
   MlLeaderboardEntry,
@@ -1925,11 +1929,26 @@ export async function getResearchHealth(): Promise<ResearchHealth> {
   return apiRequest<ResearchHealth>("/api/research/health");
 }
 
+export async function getBackendHealth(): Promise<BackendHealth> {
+  return apiRequest<BackendHealth>("/api/health");
+}
+
 export async function runResearchWorkflow(
   input: ResearchWorkflowRequest,
 ): Promise<ResearchWorkflowResponse> {
   return apiJson<ResearchWorkflowResponse, ResearchWorkflowRequest>(
     "/api/research/runs",
+    "POST",
+    input,
+  );
+}
+
+export async function runCaseResearchDraft(
+  caseId: string,
+  input: Omit<ResearchWorkflowRequest, "caseId">,
+): Promise<ResearchWorkflowResponse> {
+  return apiJson<ResearchWorkflowResponse, Omit<ResearchWorkflowRequest, "caseId">>(
+    `/api/cases/${caseId}/research-draft`,
     "POST",
     input,
   );
@@ -1941,10 +1960,63 @@ export async function getResearchRun(
   return apiRequest<ResearchWorkflowResponse>(`/api/research/runs/${runId}`);
 }
 
+export async function getResearchDraft(runId: string): Promise<ResearchDraftResponse> {
+  return apiRequest<ResearchDraftResponse>(`/api/research/runs/${runId}/draft`);
+}
+
+export async function updateResearchDraft(
+  runId: string,
+  editedDraftMarkdown: string,
+  editNote?: string,
+): Promise<ResearchDraftResponse> {
+  return apiJson<
+    ResearchDraftResponse,
+    { editedDraftMarkdown: string; editNote?: string }
+  >(`/api/research/runs/${runId}/draft`, "PATCH", {
+    editedDraftMarkdown,
+    editNote,
+  });
+}
+
+export async function regenerateResearchDraft(
+  runId: string,
+  draftType = "writ_petition",
+  useLlm = true,
+): Promise<ResearchDraftResponse> {
+  return apiJson<
+    ResearchDraftResponse,
+    { draftType: string; useLlm: boolean }
+  >(`/api/research/runs/${runId}/draft/regenerate`, "POST", {
+    draftType,
+    useLlm,
+  });
+}
+
+export async function regenerateResearchMarkdown(
+  runId: string,
+): Promise<ResearchWorkflowResponse> {
+  return apiJson<ResearchWorkflowResponse, undefined>(
+    `/api/research/runs/${runId}/markdown/regenerate`,
+    "POST",
+  );
+}
+
+export async function regenerateResearchPdf(
+  runId: string,
+  useEditedDraft = true,
+  pdfMode: PdfMode = "draft_with_research",
+): Promise<PdfRegenerateResponse> {
+  return apiJson<PdfRegenerateResponse, { useEditedDraft: boolean; pdfMode: PdfMode }>(
+    `/api/research/runs/${runId}/pdf/regenerate`,
+    "POST",
+    { useEditedDraft, pdfMode },
+  );
+}
+
 export async function listCaseResearchRuns(
   caseId: string,
 ): Promise<ResearchRunSummary[]> {
-  return apiRequest<ResearchRunSummary[]>(`/api/research/cases/${caseId}/runs`);
+  return apiRequest<ResearchRunSummary[]>(`/api/cases/${caseId}/research-runs`);
 }
 
 export async function getResearchMarkdown(runId: string): Promise<string> {
@@ -1955,8 +2027,8 @@ export function getResearchMarkdownUrl(runId: string) {
   return buildApiUrl(`/api/research/runs/${runId}/markdown`);
 }
 
-export function getResearchPdfUrl(runId: string) {
-  return buildApiUrl(`/api/research/runs/${runId}/pdf`);
+export function getResearchPdfUrl(runId: string, download = false) {
+  return buildApiUrl(`/api/research/runs/${runId}/pdf${download ? "?download=true" : ""}`);
 }
 
 export async function createDraft(

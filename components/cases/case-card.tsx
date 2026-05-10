@@ -38,6 +38,15 @@ export function CaseCard({ caseItem, onEdit }: CaseCardProps) {
           {caseItem.summary}
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
+          <span className="rounded-full border border-line px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            Docs: {caseItem.linkedDocumentIds.length}
+          </span>
+          <span className="rounded-full border border-line px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            Research notes: {caseItem.researchNoteIds.length}
+          </span>
+          <span className="rounded-full border border-line px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            Drafts: {caseItem.draftArtifacts.length}
+          </span>
           {caseItem.tags.slice(0, 3).map((tag) => (
             <span
               key={tag}
@@ -70,7 +79,19 @@ export function CaseCard({ caseItem, onEdit }: CaseCardProps) {
             href={`/cases/${caseItem.id}`}
             className={buttonVariants({ size: "sm" })}
           >
-            Open matter
+            Open
+          </Link>
+          <Link
+            href={`/cases/${caseItem.id}?research=1`}
+            className={buttonVariants({ size: "sm", variant: "outline" })}
+          >
+            Research & Draft
+          </Link>
+          <Link
+            href={`/cases/${caseItem.id}?runs=1`}
+            className={buttonVariants({ size: "sm", variant: "ghost" })}
+          >
+            View Runs
           </Link>
         </div>
       </div>
@@ -103,6 +124,15 @@ export function CaseCard({ caseItem, onEdit }: CaseCardProps) {
         {caseItem.summary}
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
+        <span className="rounded-full border border-line px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+          Docs: {caseItem.linkedDocumentIds.length}
+        </span>
+        <span className="rounded-full border border-line px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+          Research notes: {caseItem.researchNoteIds.length}
+        </span>
+        <span className="rounded-full border border-line px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+          Drafts: {caseItem.draftArtifacts.length}
+        </span>
         {caseItem.tags.slice(0, 3).map((tag) => (
           <span
             key={tag}

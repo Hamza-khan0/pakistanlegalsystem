@@ -13,6 +13,8 @@ DEFAULT_CORS_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:3001",
     "http://127.0.0.1:3001",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
 ]
 
 
@@ -112,9 +114,13 @@ class Settings(BaseSettings):
             except json.JSONDecodeError:
                 parsed = []
             if isinstance(parsed, list):
-                return [str(item).strip() for item in parsed if str(item).strip()]
+                return list(
+                    dict.fromkeys(str(item).strip().strip("\"'") for item in parsed if str(item).strip())
+                )
 
-        return [item.strip() for item in raw_value.split(",") if item.strip()]
+        return list(
+            dict.fromkeys(item.strip().strip("\"'") for item in raw_value.split(",") if item.strip())
+        )
 
 
 @lru_cache

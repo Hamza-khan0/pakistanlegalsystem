@@ -271,10 +271,13 @@ export interface ResearchWorkflowRequest {
   maxSources?: number;
   maxLiveSources?: number;
   generatePdf?: boolean;
+  pdfMode?: PdfMode;
   useLiveWeb?: boolean;
   useLlm?: boolean;
   generateFullDraft?: boolean;
 }
+
+export type PdfMode = "draft_only" | "draft_with_research" | "full_trace";
 
 export interface ResearchIssue {
   label: string;
@@ -343,6 +346,8 @@ export interface GeneratedDraft {
   draftType: string;
   title: string;
   draftMarkdown: string;
+  editedDraftMarkdown?: string | null;
+  finalDraftMarkdown: string;
   sections: Array<{ heading?: string; content?: string }>;
   authoritiesUsed: string[];
   factsUsed: string[];
@@ -350,6 +355,31 @@ export interface GeneratedDraft {
   missingInformation: string[];
   lawyerReviewChecklist: string[];
   legalAuthorityWarning: string;
+  lastEditedAt?: string | null;
+  pdfStale?: boolean;
+  pdfGeneratedAt?: string | null;
+  previousDraftMarkdown?: string | null;
+}
+
+export interface ResearchDraftResponse {
+  runId: string;
+  caseId: string;
+  saved: boolean;
+  draftMarkdown: string;
+  editedDraftMarkdown?: string | null;
+  finalDraftMarkdown: string;
+  lastEditedAt?: string | null;
+  generatedDraft: GeneratedDraft;
+  legalAuthorityWarning: string;
+}
+
+export interface PdfRegenerateResponse {
+  runId: string;
+  pdfGenerated: boolean;
+  pdfPath: string;
+  pdfUrl: string;
+  fileSizeBytes: number;
+  pdfMode: PdfMode;
 }
 
 export interface DraftingInstructions {
@@ -422,6 +452,18 @@ export interface ResearchHealth {
   artifactDirectoryWritable: boolean;
   privacyNotice: string;
   legalAuthorityWarning: string;
+}
+
+export interface BackendHealth {
+  ok: boolean;
+  status: string;
+  service: string;
+  version: string;
+  environment: string;
+  host: string;
+  port: number;
+  apiPrefix: string;
+  corsOrigins: string[];
 }
 
 export interface NoteEntry {

@@ -31,8 +31,32 @@ class CaseBase(APIModel):
     tags: list[str] = Field(default_factory=list)
 
 
-class CaseCreate(CaseBase):
-    pass
+class CaseCreate(APIModel):
+    title: str
+    case_number: str | None = Field(default=None, serialization_alias="caseNumber")
+    forum: str | None = None
+    court: str | None = None
+    matter_type: str | None = Field(default=None, serialization_alias="matterType")
+    case_type: str | None = Field(default=None, serialization_alias="caseType")
+    status: CaseStatus = CaseStatus.ACTIVE
+    priority: PriorityLevel = PriorityLevel.MEDIUM
+    client: str | None = None
+    client_name: str | None = Field(default=None, serialization_alias="clientName")
+    opposing_party: str | None = Field(default=None, serialization_alias="opposingParty")
+    summary: str = ""
+    facts: str | None = None
+    issues: list[str] = Field(default_factory=list)
+    relief_sought: list[str] | str | None = Field(default_factory=list, serialization_alias="reliefSought")
+    next_hearing_date: date | None = Field(default=None, serialization_alias="nextHearingDate")
+    assigned_counsel: list[str] = Field(default_factory=list, serialization_alias="assignedCounsel")
+    stage: str = ""
+    risk_flags: list[str] = Field(default_factory=list, serialization_alias="riskFlags")
+    important_notes: list[str] = Field(default_factory=list, serialization_alias="importantNotes")
+    facts_background: list[CaseFactRead] = Field(default_factory=list, serialization_alias="factsBackground")
+    linked_statutes: list[str] = Field(default_factory=list, serialization_alias="linkedStatutes")
+    precedents: list[str] = Field(default_factory=list)
+    procedural_alerts: list[str] = Field(default_factory=list, serialization_alias="proceduralAlerts")
+    tags: list[str] = Field(default_factory=list)
 
 
 class CaseUpdate(APIModel):

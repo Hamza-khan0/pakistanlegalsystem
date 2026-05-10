@@ -14,6 +14,8 @@
   --accent: #b8a77c;
   --accent-soft: #c6b489;
   --ink: #0d1218;
+  --font-manrope: "Aptos", "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-ibm-plex-mono: "Cascadia Code", "Consolas", "SFMono-Regular", monospace;
 }
 
 @theme inline {

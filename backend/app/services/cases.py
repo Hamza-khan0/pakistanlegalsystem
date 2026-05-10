@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from sqlalchemy import Select, asc, desc, or_, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -25,6 +27,25 @@ def _normalize_fact_rows(facts: list[object]) -> list[dict]:
             }
         )
     return normalized
+
+
+def _normalize_string_list(value: object) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [item.strip() for item in value.replace("\n", ",").split(",") if item.strip()]
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    return []
+
+
+def _generate_case_number(db: Session) -> str:
+    for _ in range(10):
+        candidate = f"CASE-{uuid4().hex[:8].upper()}"
+        exists = db.scalar(select(Case.id).where(Case.case_number == candidate))
+        if not exists:
+            return candidate
+    return f"CASE-{uuid4().hex.upper()}"
 
 
 def base_case_query() -> Select[tuple[Case]]:
@@ -115,28 +136,32 @@ def case_exists(db: Session, case_id: str) -> bool:
 
 
 def create_case(db: Session, payload: CaseCreate) -> Case:
+    facts_background = _normalize_fact_rows(payload.facts_background)
+    if payload.facts and not facts_background:
+        facts_background = [{"label": "Case facts", "text": payload.facts.strip()}]
+
     case = Case(
         title=payload.title,
-        case_number=payload.case_number,
-        forum=payload.forum,
-        matter_type=payload.matter_type,
+        case_number=payload.case_number or _generate_case_number(db),
+        forum=payload.forum or payload.court or "Forum to be confirmed",
+        matter_type=payload.matter_type or payload.case_type or "General Matter",
         status=payload.status,
         priority=payload.priority,
-        client_name=payload.client,
-        opposing_party=payload.opposing_party,
-        summary=payload.summary,
-        legal_issues=payload.issues,
-        relief_sought=payload.relief_sought,
+        client_name=payload.client or payload.client_name or "Client to be confirmed",
+        opposing_party=payload.opposing_party or "Opposing party to be confirmed",
+        summary=payload.summary or payload.facts or "",
+        legal_issues=_normalize_string_list(payload.issues),
+        relief_sought=_normalize_string_list(payload.relief_sought),
         next_hearing_date=payload.next_hearing_date,
-        assigned_counsel=payload.assigned_counsel,
+        assigned_counsel=_normalize_string_list(payload.assigned_counsel),
         filing_stage=payload.stage,
-        risk_flags=payload.risk_flags,
-        important_notes=payload.important_notes,
-        facts_background=_normalize_fact_rows(payload.facts_background),
-        linked_statutes=payload.linked_statutes,
-        precedents=payload.precedents,
-        procedural_alerts=payload.procedural_alerts,
-        tags=payload.tags,
+        risk_flags=_normalize_string_list(payload.risk_flags),
+        important_notes=_normalize_string_list(payload.important_notes),
+        facts_background=facts_background,
+        linked_statutes=_normalize_string_list(payload.linked_statutes),
+        precedents=_normalize_string_list(payload.precedents),
+        procedural_alerts=_normalize_string_list(payload.procedural_alerts),
+        tags=_normalize_string_list(payload.tags),
     )
     db.add(case)
     db.commit()

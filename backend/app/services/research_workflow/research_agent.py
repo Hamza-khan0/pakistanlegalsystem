@@ -35,6 +35,31 @@ def _clean_list(values: list[Any]) -> list[str]:
     return cleaned
 
 
+def _ensure_list(value: Any) -> list[Any]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, dict):
+        return [f"{key}: {item}" for key, item in value.items()]
+    return [value]
+
+
+def _ensure_string_list(value: Any) -> list[str]:
+    return _clean_list(_ensure_list(value))
+
+
+def _ensure_dict_list(value: Any) -> list[dict[str, Any]]:
+    items = _ensure_list(value)
+    normalized: list[dict[str, Any]] = []
+    for item in items:
+        if isinstance(item, dict):
+            normalized.append(item)
+        elif str(item).strip():
+            normalized.append({"note": str(item).strip()})
+    return normalized
+
+
 def _source_reference(source: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": source.get("id"),
@@ -201,16 +226,16 @@ def _validate_llm_memo(memo: dict[str, Any], sources: list[dict[str, Any]]) -> d
     }
     source_titles = {str(source.get("title") or "") for source in sources}
     memo["legal_authority_warning"] = LEGAL_RESEARCH_WARNING
-    memo.setdefault("factual_basis", [])
-    memo.setdefault("legal_issues", [])
-    memo.setdefault("applicable_statutes", [])
-    memo.setdefault("relevant_case_law", [])
-    memo.setdefault("procedural_position", [])
-    memo.setdefault("arguments_for_client", [])
-    memo.setdefault("arguments_against_client", [])
-    memo.setdefault("research_gaps", [])
-    memo.setdefault("recommended_draft_type", "research_memo")
-    memo.setdefault("drafting_instructions", [])
+    memo["factual_basis"] = _ensure_string_list(memo.get("factual_basis"))
+    memo["legal_issues"] = _ensure_string_list(memo.get("legal_issues"))
+    memo["applicable_statutes"] = _ensure_dict_list(memo.get("applicable_statutes"))
+    memo["relevant_case_law"] = _ensure_dict_list(memo.get("relevant_case_law"))
+    memo["procedural_position"] = _ensure_string_list(memo.get("procedural_position"))
+    memo["arguments_for_client"] = _ensure_string_list(memo.get("arguments_for_client"))
+    memo["arguments_against_client"] = _ensure_string_list(memo.get("arguments_against_client"))
+    memo["research_gaps"] = _ensure_string_list(memo.get("research_gaps"))
+    memo["recommended_draft_type"] = str(memo.get("recommended_draft_type") or "research_memo")
+    memo["drafting_instructions"] = _ensure_string_list(memo.get("drafting_instructions"))
     memo["source_list"] = _compact_sources(sources)
 
     valid_case_law = []

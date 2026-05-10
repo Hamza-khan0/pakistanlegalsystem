@@ -357,7 +357,7 @@ ML_ARTIFACTS_DIR=backend/ml_artifacts
 RETRIEVAL_ARTIFACTS_DIR=backend/ml_artifacts/retrieval
 BACKEND_HOST=127.0.0.1
 BACKEND_PORT=8000
-CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001,http://localhost:5173,http://127.0.0.1:5173
 LLM_PROVIDER=local
 LLM_PROVIDER_LABEL=Chamber Local Intelligence
 OPENAI_API_KEY=
@@ -716,10 +716,27 @@ The Hostinger path assumes a VPS with Docker. Shared hosting is not sufficient f
 
 ## Backend Run Command
 
-```bash
+Recommended Windows-safe local command:
+
+```powershell
+cd backend
+python scripts\dev_start_backend.py
+```
+
+The helper tries `8000`, then falls back to `8001`, `8002`, or `8010` if Windows blocks or reserves a port. If it starts on a fallback port, update `.env.local`:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8001
+```
+
+Direct uvicorn still works when port `8000` is available:
+
+```powershell
 cd backend
 python -m uvicorn app.main:app --reload --app-dir . --host 127.0.0.1 --port 8000
 ```
+
+See [docs/LOCAL_DEV_START.md](docs/LOCAL_DEV_START.md) for the full backend/frontend startup flow.
 
 ## Runtime Certification
 
@@ -765,7 +782,7 @@ The backend uses FastAPI `CORSMiddleware` with explicit local development origin
 You can override these with:
 
 ```bash
-CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001,http://localhost:5173,http://127.0.0.1:5173
 ```
 
 The middleware is configured with:

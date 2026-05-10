@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import FileResponse, PlainTextResponse
 from sqlalchemy.orm import Session
 
@@ -8,6 +8,11 @@ from app.core.config import settings
 from app.db.session import get_db
 from app.schemas.research import (
     LEGAL_RESEARCH_WARNING,
+    PdfRegenerateRequest,
+    PdfRegenerateResponse,
+    ResearchDraftRegenerateRequest,
+    ResearchDraftResponse,
+    ResearchDraftUpdateRequest,
     ResearchEntryCreate,
     ResearchEntryRead,
     ResearchHealthRead,
@@ -21,9 +26,16 @@ from app.services import research as research_service
 from app.services.llm.provider import PRIVACY_NOTICE, get_llm_health
 from app.services.ml.training.imported_legal_issue import get_legal_issue_model_health
 from app.services.research_workflow.research_artifacts import ARTIFACT_ROOT
+from app.services.research_workflow.draft_storage import (
+    mark_pdf_generated,
+    research_draft_response_payload,
+    set_edited_draft_markdown,
+)
 from app.services.research_workflow.research_draft_pipeline import (
     get_research_run,
     list_case_research_runs,
+    regenerate_research_draft,
+    regenerate_research_artifacts,
     research_run_summary,
     research_run_to_response,
     run_research_draft_pipeline,
@@ -134,6 +146,123 @@ def create_research_run(
         ) from exc
 
 
+@router.get("/research/runs/{run_id}/draft", response_model=ResearchDraftResponse)
+def read_research_draft(run_id: str, db: Session = Depends(get_db)) -> ResearchDraftResponse:
+    run = get_research_run(db, run_id)
+    if run is None:
+        raise not_found("Research run not found.")
+    try:
+        return ResearchDraftResponse(**research_draft_response_payload(run))
+    except ValueError as exc:
+        raise not_found(str(exc)) from exc
+
+
+@router.patch("/research/runs/{run_id}/draft", response_model=ResearchDraftResponse)
+def update_research_draft(
+    run_id: str,
+    payload: ResearchDraftUpdateRequest,
+    db: Session = Depends(get_db),
+) -> ResearchDraftResponse:
+    run = get_research_run(db, run_id)
+    if run is None:
+        raise not_found("Research run not found.")
+    try:
+        set_edited_draft_markdown(
+            run,
+            payload.edited_draft_markdown,
+            edit_note=payload.edit_note,
+        )
+        regenerate_research_artifacts(db, run, generate_pdf=False)
+        db.refresh(run)
+        return ResearchDraftResponse(**research_draft_response_payload(run))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+
+@router.post("/research/runs/{run_id}/draft/regenerate", response_model=ResearchDraftResponse)
+def regenerate_research_draft_endpoint(
+    run_id: str,
+    payload: ResearchDraftRegenerateRequest,
+    db: Session = Depends(get_db),
+) -> ResearchDraftResponse:
+    run = get_research_run(db, run_id)
+    if run is None:
+        raise not_found("Research run not found.")
+    try:
+        regenerate_research_draft(
+            db,
+            run,
+            draft_type=payload.draft_type,
+            use_llm=payload.use_llm,
+        )
+        regenerate_research_artifacts(db, run, generate_pdf=False)
+        db.refresh(run)
+        return ResearchDraftResponse(**research_draft_response_payload(run))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+
+@router.post("/research/runs/{run_id}/markdown/regenerate", response_model=ResearchWorkflowResponse)
+def regenerate_research_markdown(
+    run_id: str,
+    db: Session = Depends(get_db),
+) -> ResearchWorkflowResponse:
+    run = get_research_run(db, run_id)
+    if run is None:
+        raise not_found("Research run not found.")
+    regenerate_research_artifacts(db, run, generate_pdf=False)
+    return research_run_to_response(run)
+
+
+@router.post("/research/runs/{run_id}/pdf/regenerate", response_model=PdfRegenerateResponse)
+def regenerate_research_pdf(
+    run_id: str,
+    payload: PdfRegenerateRequest,
+    db: Session = Depends(get_db),
+) -> PdfRegenerateResponse:
+    run = get_research_run(db, run_id)
+    if run is None:
+        raise not_found("Research run not found.")
+    try:
+        regenerate_research_artifacts(
+            db,
+            run,
+            generate_pdf=True,
+            use_edited_draft=payload.use_edited_draft,
+            pdf_mode=payload.pdf_mode,
+        )
+        mark_pdf_generated(run)
+        db.commit()
+        db.refresh(run)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"PDF generation failed: {exc}",
+        ) from exc
+
+    if not run.pdf_path:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="PDF generation did not produce a file path.",
+        )
+    pdf_path = Path(run.pdf_path)
+    if not pdf_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="PDF generation did not produce a file on disk.",
+        )
+    return PdfRegenerateResponse(
+        run_id=run.id,
+        pdf_generated=True,
+        pdf_path=str(pdf_path),
+        pdf_url=f"/api/research/runs/{run.id}/pdf",
+        file_size_bytes=pdf_path.stat().st_size,
+        pdf_mode=payload.pdf_mode,
+    )
+
+
 @router.get("/research/runs/{run_id}", response_model=ResearchWorkflowResponse)
 def read_research_run(run_id: str, db: Session = Depends(get_db)) -> ResearchWorkflowResponse:
     run = get_research_run(db, run_id)
@@ -163,7 +292,11 @@ def read_research_markdown(run_id: str, db: Session = Depends(get_db)) -> PlainT
 
 
 @router.get("/research/runs/{run_id}/pdf")
-def read_research_pdf(run_id: str, db: Session = Depends(get_db)) -> FileResponse:
+def read_research_pdf(
+    run_id: str,
+    download: bool = Query(default=False),
+    db: Session = Depends(get_db),
+) -> FileResponse:
     run = get_research_run(db, run_id)
     if run is None:
         raise not_found("Research run not found.")
@@ -172,8 +305,10 @@ def read_research_pdf(run_id: str, db: Session = Depends(get_db)) -> FileRespons
     pdf_path = Path(run.pdf_path)
     if not pdf_path.exists():
         raise not_found("PDF artifact file is missing from disk.")
+    disposition = "attachment" if download else "inline"
     return FileResponse(
         pdf_path,
         media_type="application/pdf",
-        filename=f"research_memo_{run.id}.pdf",
+        filename=f"research_output_{run.id}.pdf",
+        content_disposition_type=disposition,
     )

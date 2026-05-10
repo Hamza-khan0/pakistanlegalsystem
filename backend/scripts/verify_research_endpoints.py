@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -9,7 +10,13 @@ from urllib.request import Request, urlopen
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 BACKEND_DIR = PROJECT_ROOT / "backend"
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = os.getenv("BACKEND_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+FORBIDDEN_PDF_DEBUG_MARKERS = (
+    b"retrieval: {",
+    b"liveWebSearch: {",
+    b"llm: {",
+    b"Draft type: research_memo",
+)
 
 
 def _check(name: str, ok: bool, detail: str = "") -> None:
@@ -67,6 +74,7 @@ def main() -> None:
         "useLiveWeb": True,
         "useLlm": True,
         "generateFullDraft": True,
+        "pdfMode": "draft_with_research",
     }
     created_status, created_body, created_payload = _request("POST", "/api/research/runs", payload=payload)
     _check("create_run_ok", created_status in {200, 201}, created_body[:500].decode("utf-8", "replace"))
@@ -75,6 +83,9 @@ def main() -> None:
     _check("run_id_present", bool(run_id), json.dumps(created_payload, indent=2)[:500])
     _check("response_contains_memo", bool(created_payload.get("researchMemo")), "")
     _check("response_contains_generated_draft", bool(created_payload.get("generatedDraft")), "")
+    generated_draft = created_payload.get("generatedDraft") or {}
+    draft_markdown = str(generated_draft.get("draftMarkdown") or "")
+    _check("response_draft_is_legal_document", "IN THE HIGH COURT" in draft_markdown and "PRAYER" in draft_markdown, draft_markdown[:300])
     _check("response_contains_critic", bool(created_payload.get("criticReport")), "")
     _check("response_contains_provider_status", bool(created_payload.get("providerStatus")), "")
     _check("response_contains_sources_by_origin", bool(created_payload.get("sourcesByOrigin")), str(created_payload.get("sourcesByOrigin")))
@@ -95,14 +106,17 @@ def main() -> None:
     _check(
         "markdown_ok",
         markdown_status == 200
-        and "AI Legal Chambers Research & Draft Output" in markdown_text
-        and "Generated Draft" in markdown_text,
+        and "AI Legal Chambers" in markdown_text
+        and "Research & Draft Output" in markdown_text
+        and "FINAL LEGAL DRAFT" in markdown_text,
         markdown_text[:300],
     )
 
     if created_payload.get("pdfPath"):
         pdf_status, pdf_body, _ = _request("GET", f"/api/research/runs/{run_id}/pdf")
         _check("pdf_ok", pdf_status == 200 and pdf_body.startswith(b"%PDF"), str(pdf_status))
+        for marker in FORBIDDEN_PDF_DEBUG_MARKERS:
+            _check(f"pdf_no_debug_marker_{marker.decode('utf-8')}", marker not in pdf_body, marker.decode("utf-8"))
     else:
         print("[INFO] pdf_not_reported - skipping PDF download check")
 

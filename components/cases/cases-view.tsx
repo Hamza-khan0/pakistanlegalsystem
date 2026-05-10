@@ -2,6 +2,7 @@
 
 import type { FormEvent, HTMLInputTypeAttribute } from "react";
 import { useDeferredValue, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { SlidersHorizontal, X } from "lucide-react";
 
 import { CaseCard } from "@/components/cases/case-card";
@@ -164,11 +165,7 @@ function buildCaseInput(formState: CaseFormState): CaseMutationInput {
 function validateCaseForm(formState: CaseFormState) {
   const requiredFields = [
     ["title", formState.title],
-    ["case number", formState.caseNumber],
-    ["forum", formState.forum],
-    ["matter type", formState.matterType],
-    ["client name", formState.client],
-    ["opposing party", formState.opposingParty],
+    ["facts / case summary", formState.summary],
   ] as const;
 
   const missing = requiredFields.find(([, value]) => !value.trim());
@@ -188,6 +185,7 @@ export function CasesView({
   initialMode?: "create" | "edit" | null;
   initialEditCaseId?: string | null;
 }) {
+  const router = useRouter();
   const initialEditCase = initialEditCaseId
     ? cases.find((caseItem) => caseItem.id === initialEditCaseId) ?? null
     : null;
@@ -276,6 +274,8 @@ export function CasesView({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    const shouldResearch = submitter?.dataset.intent === "research";
 
     const validationMessage = validateCaseForm(formState);
     if (validationMessage) {
@@ -305,11 +305,12 @@ export function CasesView({
         const createdCase = await createCase(buildCaseInput(formState));
         setCasesState((current) => [createdCase, ...current]);
         setFormState(emptyCaseForm);
-        setFormSuccess("Matter created successfully.");
+        setFormSuccess("Case created successfully.");
         setPageNotice({
           tone: "success",
-          message: `${createdCase.title} is now available in the live portfolio.`,
+          message: `${createdCase.title} is now saved and ready for Research & Draft.`,
         });
+        router.push(`/cases/${createdCase.id}${shouldResearch ? "?research=1" : ""}`);
       }
     } catch (error) {
       setFormError(
@@ -352,21 +353,14 @@ export function CasesView({
     <div className="space-y-6">
       <PageHeader
         eyebrow="Cases"
-        title="Matter portfolio"
-        description="Search, sort, and manage the chamber's active Pakistani litigation matters, with live matter operations feeding the Phase 3 intelligence layer."
+        title="Cases"
+        description="Create a case, open its workspace, and run Research & Draft from one clear place."
         meta={[
-          `${casesState.length} tracked matters`,
+          `${casesState.length} saved cases`,
           "Court-aware statuses",
-          "Live matter mutation flows",
+          "Research & Draft ready",
         ]}
-        actions={
-          <>
-            <Button disabled variant="secondary">
-              Export docket view · Coming soon
-            </Button>
-            <Button onClick={openCreateForm}>New matter intake</Button>
-          </>
-        }
+        actions={<Button onClick={openCreateForm}>+ New Case</Button>}
       />
 
       {pageNotice ? (
@@ -378,11 +372,11 @@ export function CasesView({
 
       {formMode ? (
         <SectionCard
-          title={formMode === "create" ? "New matter intake" : "Edit matter"}
+          title={formMode === "create" ? "New Case" : "Edit Case"}
           description={
             formMode === "create"
-              ? "Create a real case record and persist it to the legal matter database."
-              : "Update the live matter record, or archive it from the active portfolio."
+              ? "Only title and facts are required. Extra court, party, and relief details improve research quality."
+              : "Update the saved case record, or archive it from the active portfolio."
           }
           action={
             <button
@@ -404,7 +398,7 @@ export function CasesView({
 
             <div className="grid gap-4 md:grid-cols-2">
               <Field
-                label="Matter title"
+                label="Case title"
                 value={formState.title}
                 onChange={(value) => setFormState((current) => ({ ...current, title: value }))}
                 placeholder="Green Valley Cooperative Housing Society v LDA"
@@ -518,7 +512,7 @@ export function CasesView({
             </div>
 
             <TextAreaField
-              label="Summary"
+              label="Facts / case summary"
               value={formState.summary}
               onChange={(value) => setFormState((current) => ({ ...current, summary: value }))}
               placeholder="Summarize the matter posture, core dispute, and why the file needs attention."
@@ -542,7 +536,7 @@ export function CasesView({
 
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
               <div className="text-sm text-muted-foreground">
-                Required fields are validated before the chamber persists the matter.
+                Required: case title and facts. Other fields can be filled later.
               </div>
               <div className="flex flex-wrap gap-3">
                 {formMode === "edit" ? (
@@ -566,8 +560,18 @@ export function CasesView({
                       : "Creating matter..."
                     : formMode === "edit"
                       ? "Save changes"
-                      : "Create matter"}
+                      : "Save Case"}
                 </Button>
+                {formMode === "create" ? (
+                  <Button
+                    data-intent="research"
+                    disabled={saving}
+                    type="submit"
+                    variant="secondary"
+                  >
+                    {saving ? "Saving..." : "Save & Research"}
+                  </Button>
+                ) : null}
               </div>
             </div>
           </form>
@@ -675,7 +679,7 @@ export function CasesView({
               description="Try widening the search, clearing a filter, or create a fresh matter intake."
               action={
                 <Button onClick={openCreateForm} variant="secondary">
-                  Create new matter
+                  + New Case
                 </Button>
               }
             />

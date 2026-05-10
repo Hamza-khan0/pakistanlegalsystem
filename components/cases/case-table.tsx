@@ -4,6 +4,7 @@ import { ArrowUpRight } from "lucide-react";
 import { AvatarStack } from "@/components/common/avatar-stack";
 import { PriorityBadge } from "@/components/common/priority-badge";
 import { StatusBadge } from "@/components/common/status-badge";
+import { buttonVariants } from "@/components/ui/button";
 import type { CaseMatter } from "@/types";
 import { formatCompactDate } from "@/lib/utils";
 
@@ -45,6 +46,12 @@ export function CaseTable({ cases, onEdit }: CaseTableProps) {
                     <span className="rounded-full border border-line px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                       {caseItem.matterType}
                     </span>
+                    <span className="rounded-full border border-line px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                      Docs: {caseItem.linkedDocumentIds.length}
+                    </span>
+                    <span className="rounded-full border border-line px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                      Drafts: {caseItem.draftArtifacts.length}
+                    </span>
                   </div>
                 </div>
               </td>
@@ -77,6 +84,18 @@ export function CaseTable({ cases, onEdit }: CaseTableProps) {
                   >
                     Open
                     <ArrowUpRight className="size-4" />
+                  </Link>
+                  <Link
+                    href={`/cases/${caseItem.id}?research=1`}
+                    className={buttonVariants({ size: "sm", variant: "outline" })}
+                  >
+                    Research & Draft
+                  </Link>
+                  <Link
+                    href={`/cases/${caseItem.id}?runs=1`}
+                    className={buttonVariants({ size: "sm", variant: "ghost" })}
+                  >
+                    View Runs
                   </Link>
                 </div>
               </td>

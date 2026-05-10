@@ -5,17 +5,25 @@ from pathlib import Path
 from typing import Any
 
 from app.core.config import PROJECT_ROOT
+from app.schemas.research import (
+    LEGAL_RESEARCH_WARNING,
+    PDF_MODE_DRAFT_ONLY,
+    PDF_MODE_DRAFT_WITH_RESEARCH,
+    PDF_MODE_FULL_TRACE,
+    PDF_MODES,
+)
+from app.services.research_workflow.draft_storage import normalize_generated_draft
 
 
 ARTIFACT_ROOT = Path(PROJECT_ROOT) / "backend" / "generated" / "research_runs"
 
 
-def _line_items(title: str, values: list[Any]) -> list[str]:
+def _line_items(title: str, values: list[Any], *, limit: int = 12) -> list[str]:
     lines = [f"## {title}", ""]
     if not values:
         lines.extend(["- Not available.", ""])
         return lines
-    for value in values:
+    for value in values[:limit]:
         if isinstance(value, dict):
             text = value.get("title") or value.get("query") or value.get("label") or str(value)
             extra = value.get("citation") or value.get("section") or value.get("sourceType") or ""
@@ -26,94 +34,194 @@ def _line_items(title: str, values: list[Any]) -> list[str]:
     return lines
 
 
-def render_research_markdown(response_data: dict[str, Any]) -> str:
+def _case_title(response_data: dict[str, Any]) -> str:
     memo = response_data.get("research_memo") or {}
-    generated_draft = response_data.get("generated_draft") or {}
-    critic = response_data.get("critic_report") or {}
-    drafting = response_data.get("drafting_instructions") or {}
-    provider_status = response_data.get("provider_status") or {}
-    privacy_notice = response_data.get("privacy_notice") or provider_status.get("privacyNotice") or ""
+    for item in memo.get("factual_basis", []):
+        text = str(item)
+        if text.startswith("Case:"):
+            return text.replace("Case:", "", 1).strip()
+    return str(response_data.get("case_id") or "Legal matter")
+
+
+def _compact_provider_status(response_data: dict[str, Any]) -> list[str]:
+    provider = response_data.get("provider_status") or {}
+    return [
+        f"- Local corpus: {'Used' if provider.get('localRetrievalUsed', True) else 'Not used'}",
+        f"- Live web: {'Used' if response_data.get('live_web_used') else 'Not used / unavailable'}",
+        f"- LLM research: {'Used' if response_data.get('llm_used_for_research') else 'Fallback / not used'}",
+        f"- LLM drafting: {'Used' if response_data.get('llm_used_for_drafting') else 'Fallback / not used'}",
+        f"- Generated at: {response_data.get('completed_at') or response_data.get('created_at') or 'Not recorded'}",
+    ]
+
+
+def _clean_source_title(source: dict[str, Any]) -> str:
+    title = str(source.get("title") or "Untitled source").strip()
+    citation = str(source.get("citation") or "").strip()
+    source_type = str(source.get("source_type") or source.get("sourceType") or "").strip()
+    source_text = " ".join([title, citation, str(source.get("excerpt") or "")]).casefold()
+    if "demo" in source_text:
+        title = f"{title} (DEMO ONLY - verify before use)"
+    parts = [title]
+    if citation:
+        parts.append(citation)
+    if source_type:
+        parts.append(source_type)
+    return " | ".join(parts)
+
+
+def _source_lines(response_data: dict[str, Any], *, limit: int = 16) -> list[str]:
     sources_by_origin = response_data.get("sources_by_origin") or {}
+    sources = response_data.get("retrieved_sources") or []
+    grouped = sources_by_origin if isinstance(sources_by_origin, dict) and sources_by_origin else {"all": sources}
+    lines: list[str] = []
+    for origin, values in grouped.items():
+        if not isinstance(values, list) or not values:
+            continue
+        lines.append(f"### {str(origin).replace('_', ' ').title()}")
+        lines.append("")
+        for source in values[:limit]:
+            if not isinstance(source, dict):
+                continue
+            source_type = str(source.get("source_type") or source.get("sourceType") or "").casefold()
+            title_url = " ".join([str(source.get("title") or ""), str(source.get("url") or "")]).casefold()
+            if source_type == "unknown" and not (source.get("citation") or source.get("statute") or source.get("section")):
+                continue
+            if any(marker in title_url for marker in ("judge profile", "/judge", "biography", "cause-list", "cause_list")):
+                continue
+            confidence = source.get("confidence")
+            url = str(source.get("url") or "").split("?", 1)[0]
+            url_note = f" URL: {url}" if url and len(url) < 140 else ""
+            confidence_note = f" Confidence: {confidence}" if confidence not in (None, "") else ""
+            lines.append(f"- {_clean_source_title(source)}.{confidence_note}{url_note}")
+        lines.append("")
+    return lines or ["- No sources were retained for the client-facing packet.", ""]
+
+
+def _research_summary_lines(memo: dict[str, Any]) -> list[str]:
+    lines: list[str] = []
+    for key, title in [
+        ("factual_basis", "Factual Basis"),
+        ("legal_issues", "Legal Issues"),
+        ("arguments_for_client", "Arguments Supporting Client"),
+        ("arguments_against_client", "Risks / Arguments Against Client"),
+        ("research_gaps", "Research Gaps"),
+    ]:
+        values = [str(item) for item in memo.get(key, []) if str(item).strip()]
+        if not values:
+            continue
+        lines.append(f"### {title}")
+        lines.append("")
+        for item in values[:8]:
+            lines.append(f"- {item}")
+        lines.append("")
+    return lines or ["- Research summary was not available.", ""]
+
+
+def _critic_lines(critic: dict[str, Any]) -> list[str]:
     lines = [
-        "# AI Legal Chambers Research & Draft Output",
-        "",
-        f"Run ID: {response_data.get('run_id')}",
-        f"Case ID: {response_data.get('case_id')}",
-        f"Status: {response_data.get('status')}",
-        f"Created at: {response_data.get('created_at')}",
-        f"Completed at: {response_data.get('completed_at')}",
-        "",
-        f"> {response_data.get('legal_authority_warning') or memo.get('legal_authority_warning') or ''}",
-        "",
-        f"> Privacy notice: {privacy_notice}",
+        f"- Status: {'Passed' if critic.get('passed') else 'Needs Lawyer Review'}",
+        f"- Severity: {critic.get('severity') or 'medium'}",
+        f"- Recommendation: {critic.get('recommendation') or 'Review required.'}",
         "",
     ]
-    lines.extend(["## Provider Status", ""])
-    for key, value in provider_status.items():
-        lines.append(f"- {key}: {value}")
-    lines.append("")
-    lines.extend(_line_items("Detected Issues", response_data.get("detected_issues", [])))
-    lines.extend(_line_items("Research Query Plan", response_data.get("query_plan", [])))
-    lines.extend(["## Sources Used By Origin", ""])
-    if sources_by_origin:
-        for origin, values in sources_by_origin.items():
-            lines.append(f"### {str(origin).replace('_', ' ').title()}")
-            lines.append("")
-            if isinstance(values, list) and values:
-                for source in values:
-                    title = source.get("title") if isinstance(source, dict) else str(source)
-                    citation = source.get("citation") if isinstance(source, dict) else ""
-                    url = source.get("url") if isinstance(source, dict) else ""
-                    confidence = source.get("confidence") if isinstance(source, dict) else ""
-                    lines.append(f"- {title}{f' | {citation}' if citation else ''}{f' | {url}' if url else ''}{f' | confidence {confidence}' if confidence != '' else ''}")
-            elif isinstance(values, int):
-                lines.append(f"- {values} source(s).")
-            else:
-                lines.append("- Not available.")
-            lines.append("")
-    else:
-        lines.append("- Not available.")
-        lines.append("")
-    lines.extend(_line_items("Source List", memo.get("source_list", [])))
-    lines.extend(_line_items("Factual Basis", memo.get("factual_basis", [])))
-    lines.extend(_line_items("Legal Issues", memo.get("legal_issues", [])))
-    lines.extend(_line_items("Applicable Statutes", memo.get("applicable_statutes", [])))
-    lines.extend(_line_items("Relevant Case Law", memo.get("relevant_case_law", [])))
-    lines.extend(_line_items("Procedural Position", memo.get("procedural_position", [])))
-    lines.extend(_line_items("Arguments For Client", memo.get("arguments_for_client", [])))
-    lines.extend(_line_items("Arguments Against Client", memo.get("arguments_against_client", [])))
-    lines.extend(_line_items("Research Gaps", memo.get("research_gaps", [])))
-    if generated_draft:
-        lines.extend(["## Generated Draft", ""])
-        lines.append(f"Draft type: {generated_draft.get('draft_type') or generated_draft.get('draftType')}")
-        lines.append("")
-        lines.append(str(generated_draft.get("draft_markdown") or generated_draft.get("draftMarkdown") or ""))
-        lines.append("")
-    lines.extend(["## Drafting Instructions", ""])
-    lines.append(f"- Recommended draft type: {drafting.get('selected_draft_type') or memo.get('recommended_draft_type')}")
-    for item in drafting.get("core_issues_to_plead", []):
-        lines.append(f"- Core issue: {item}")
-    for item in drafting.get("risks_to_address", []):
-        lines.append(f"- Risk to address: {item}")
-    lines.append("")
-    lines.extend(["## Critic Review", ""])
-    lines.append(f"- Passed: {critic.get('passed')}")
-    lines.append(f"- Recommendation: {critic.get('recommendation')}")
-    for key, title in [
-        ("unsupported_claims", "Unsupported claims"),
-        ("fake_or_unverified_citations", "Fake or unverified citations"),
+    grouped = [
+        ("fake_or_unverified_citations", "Unverified or weak citations"),
         ("weak_sources", "Weak sources"),
         ("missing_authorities", "Missing authorities"),
         ("drafting_defects", "Drafting defects"),
-        ("overclaiming_warnings", "Overclaiming warnings"),
         ("drafting_risks", "Drafting risks"),
         ("required_lawyer_checks", "Required lawyer checks"),
-    ]:
-        for item in critic.get(key, []):
-            lines.append(f"- {title}: {item}")
-    lines.append("")
-    lines.extend(_line_items("Lawyer Review Checklist", response_data.get("lawyer_review_checklist", [])))
-    lines.extend(_line_items("Warnings", response_data.get("warnings", [])))
+    ]
+    for key, title in grouped:
+        items = [str(item) for item in critic.get(key, []) if str(item).strip()]
+        if not items:
+            continue
+        lines.append(f"### {title}")
+        lines.append("")
+        for index, item in enumerate(items[:8], start=1):
+            lines.append(f"{index}. {item}")
+        lines.append("")
+    return lines
+
+
+def _full_trace_lines(response_data: dict[str, Any]) -> list[str]:
+    safe_trace = {
+        "providerStatus": response_data.get("provider_status") or {},
+        "warnings": response_data.get("warnings") or [],
+        "queryPlan": response_data.get("query_plan") or [],
+        "detectedIssues": response_data.get("detected_issues") or [],
+    }
+    return ["## Developer Full Trace", "", "```json", str(safe_trace), "```", ""]
+
+
+def render_research_markdown(
+    response_data: dict[str, Any],
+    *,
+    pdf_mode: str = PDF_MODE_DRAFT_WITH_RESEARCH,
+) -> str:
+    if pdf_mode not in PDF_MODES:
+        pdf_mode = PDF_MODE_DRAFT_WITH_RESEARCH
+
+    memo = response_data.get("research_memo") or {}
+    generated_draft = normalize_generated_draft(response_data.get("generated_draft") or {}) or {}
+    critic = response_data.get("critic_report") or {}
+    privacy_notice = response_data.get("privacy_notice") or ""
+    final_draft = str(generated_draft.get("final_draft_markdown") or generated_draft.get("draft_markdown") or "")
+    draft_type = str(generated_draft.get("draft_type") or "research_memo")
+
+    lines = [
+        "# AI Legal Chambers",
+        "# Research & Draft Output",
+        "",
+        f"Document Type: {draft_type.replace('_', ' ').title()}",
+        f"Case: {_case_title(response_data)}",
+        f"Run ID: {response_data.get('run_id') or 'Not recorded'}",
+        f"Generated: {response_data.get('completed_at') or response_data.get('created_at') or 'Not recorded'}",
+        "",
+        "## Legal Warning",
+        "",
+        f"> {response_data.get('legal_authority_warning') or memo.get('legal_authority_warning') or LEGAL_RESEARCH_WARNING}",
+        "",
+        "## Case Details",
+        "",
+        f"- Case ID: {response_data.get('case_id')}",
+        f"- Run status: {response_data.get('status')}",
+        f"- Draft status: {'Edited draft' if generated_draft.get('edited_draft_markdown') else 'Original generated draft'}",
+        f"- Last edited: {generated_draft.get('last_edited_at') or 'Not edited'}",
+        "",
+        "## Provider Summary",
+        "",
+        *_compact_provider_status(response_data),
+        "",
+        "---",
+        "",
+        "# FINAL LEGAL DRAFT - LAWYER REVIEW REQUIRED",
+        "",
+        final_draft or "No final legal draft was generated for this run.",
+        "",
+    ]
+
+    checklist = list(
+        dict.fromkeys(
+            list(generated_draft.get("lawyer_review_checklist") or [])
+            + list(response_data.get("lawyer_review_checklist") or [])
+        )
+    )
+    lines.extend(_line_items("Lawyer Review Checklist", checklist, limit=12))
+
+    if pdf_mode in {PDF_MODE_DRAFT_WITH_RESEARCH, PDF_MODE_FULL_TRACE}:
+        lines.extend(["---", "", "# ANNEXURE A - Research Summary", ""])
+        lines.extend(_research_summary_lines(memo))
+        lines.extend(["# ANNEXURE B - Authorities / Sources Considered", ""])
+        lines.extend(_source_lines(response_data))
+        lines.extend(["# ANNEXURE C - Critic Warnings", ""])
+        lines.extend(_critic_lines(critic))
+
+    if pdf_mode == PDF_MODE_FULL_TRACE:
+        lines.extend(_full_trace_lines(response_data))
+        if privacy_notice:
+            lines.extend(["## Privacy Notice", "", f"> {privacy_notice}", ""])
+
     return "\n".join(lines).strip() + "\n"
 
 
@@ -160,7 +268,6 @@ def _write_basic_pdf(path: Path, text: str) -> None:
         f"<< /Type /Pages /Count {len(page_ids)} /Kids "
         f"[{' '.join(f'{page_id} 0 R' for page_id in page_ids)}] >>"
     ).encode("latin-1")
-    # Keep these ids referenced for reader sanity and to avoid over-aggressive linters.
     _ = (catalog_id, content_ids)
 
     output = bytearray(b"%PDF-1.4\n")
@@ -181,15 +288,132 @@ def _write_basic_pdf(path: Path, text: str) -> None:
     path.write_bytes(output)
 
 
+def _write_reportlab_pdf(path: Path, text: str) -> None:
+    from html import escape
+
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "LegalPacketTitle",
+        parent=styles["Title"],
+        fontName="Helvetica-Bold",
+        fontSize=18,
+        leading=23,
+        textColor=colors.HexColor("#111827"),
+        spaceAfter=10,
+    )
+    heading_style = ParagraphStyle(
+        "LegalPacketHeading",
+        parent=styles["Heading2"],
+        fontName="Helvetica-Bold",
+        fontSize=12.5,
+        leading=16,
+        textColor=colors.HexColor("#111827"),
+        spaceBefore=11,
+        spaceAfter=6,
+    )
+    subheading_style = ParagraphStyle(
+        "LegalPacketSubheading",
+        parent=styles["Heading3"],
+        fontName="Helvetica-Bold",
+        fontSize=10.5,
+        leading=14,
+        textColor=colors.HexColor("#1f2937"),
+        spaceBefore=8,
+        spaceAfter=4,
+    )
+    body_style = ParagraphStyle(
+        "LegalPacketBody",
+        parent=styles["BodyText"],
+        fontName="Times-Roman",
+        fontSize=10.5,
+        leading=15,
+        textColor=colors.HexColor("#111827"),
+        spaceAfter=5,
+    )
+    warning_style = ParagraphStyle(
+        "LegalPacketWarning",
+        parent=body_style,
+        fontName="Helvetica",
+        leftIndent=6,
+        rightIndent=6,
+        borderColor=colors.HexColor("#d97706"),
+        borderWidth=0.5,
+        borderPadding=7,
+        textColor=colors.HexColor("#78350f"),
+        backColor=colors.HexColor("#fffbeb"),
+        spaceAfter=10,
+    )
+
+    doc = SimpleDocTemplate(
+        str(path),
+        pagesize=A4,
+        leftMargin=22 * mm,
+        rightMargin=22 * mm,
+        topMargin=20 * mm,
+        bottomMargin=18 * mm,
+        title="AI Legal Chambers Research & Draft Output",
+    )
+
+    story: list[Any] = []
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            story.append(Spacer(1, 5))
+            continue
+        if line == "---":
+            story.append(PageBreak())
+            continue
+        if line.startswith("# "):
+            story.append(Paragraph(escape(line[2:]), title_style))
+            continue
+        if line.startswith("## "):
+            story.append(Paragraph(escape(line[3:]), heading_style))
+            continue
+        if line.startswith("### "):
+            story.append(Paragraph(escape(line[4:]), subheading_style))
+            continue
+        if line.startswith("> "):
+            story.append(Paragraph(escape(line[2:]), warning_style))
+            continue
+        story.append(Paragraph(escape(line), body_style))
+
+    def _page_footer(canvas: Any, document: Any) -> None:
+        canvas.saveState()
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(colors.HexColor("#6b7280"))
+        canvas.drawString(22 * mm, 10 * mm, "AI Legal Chambers - lawyer review required")
+        canvas.drawRightString(188 * mm, 10 * mm, f"Page {document.page}")
+        canvas.restoreState()
+
+    doc.build(story, onFirstPage=_page_footer, onLaterPages=_page_footer)
+
+
+def write_research_pdf(path: Path, markdown: str) -> None:
+    try:
+        _write_reportlab_pdf(path, markdown)
+    except Exception:
+        _write_basic_pdf(path, markdown)
+
+
 def write_research_artifacts(
     run_id: str,
     response_data: dict[str, Any],
     *,
     generate_pdf: bool = True,
+    pdf_mode: str = PDF_MODE_DRAFT_WITH_RESEARCH,
 ) -> tuple[str, str | None, list[str]]:
+    if pdf_mode not in PDF_MODES:
+        pdf_mode = PDF_MODE_DRAFT_WITH_RESEARCH
+
     run_dir = ARTIFACT_ROOT / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
-    markdown = render_research_markdown(response_data)
+    markdown = render_research_markdown(response_data, pdf_mode=pdf_mode)
     markdown_path = run_dir / "research_memo.md"
     markdown_path.write_text(markdown, encoding="utf-8")
 
@@ -197,8 +421,8 @@ def write_research_artifacts(
     pdf_path: str | None = None
     if generate_pdf:
         try:
-            pdf_file = run_dir / "research_memo.pdf"
-            _write_basic_pdf(pdf_file, markdown)
+            pdf_file = run_dir / "research_output.pdf"
+            write_research_pdf(pdf_file, markdown)
             pdf_path = str(pdf_file)
         except Exception as exc:
             warnings.append(f"PDF generation failed; markdown artifact is available. {exc}")

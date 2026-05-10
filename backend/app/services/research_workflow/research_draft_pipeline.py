@@ -11,6 +11,7 @@ from app.models.research import ResearchEntry
 from app.models.research_run import ResearchRun
 from app.schemas.research import (
     LEGAL_RESEARCH_WARNING,
+    PDF_MODE_DRAFT_WITH_RESEARCH,
     ResearchWorkflowRequest,
     ResearchWorkflowResponse,
 )
@@ -18,6 +19,7 @@ from app.services.research_workflow.case_context import assemble_case_context
 from app.services.research_workflow.critic_agent import critic_review_research_memo
 from app.services.research_workflow.drafting_agent import generate_full_legal_draft
 from app.services.research_workflow.drafting_instructions import build_drafting_instructions
+from app.services.research_workflow.draft_storage import normalize_generated_draft
 from app.services.research_workflow.issue_detection import detect_research_issues
 from app.services.research_workflow.legal_retrieval import retrieve_pakistani_legal_sources
 from app.services.research_workflow.live_web_search import get_live_web_search_health
@@ -45,7 +47,7 @@ def _status_value(status: ResearchRunStatus | str) -> str:
 
 
 def _response_payload(run: ResearchRun) -> dict[str, Any]:
-    generated_draft = run.generated_draft_json or None
+    generated_draft = normalize_generated_draft(run.generated_draft_json)
     lawyer_review_checklist = []
     if generated_draft:
         lawyer_review_checklist.extend(generated_draft.get("lawyer_review_checklist", []))
@@ -174,6 +176,85 @@ def list_case_research_runs(db: Session, case_id: str) -> list[ResearchRun]:
     )
 
 
+def regenerate_research_draft(
+    db: Session,
+    run: ResearchRun,
+    *,
+    draft_type: str,
+    use_llm: bool = True,
+) -> dict[str, Any]:
+    context = assemble_case_context(
+        db,
+        run.case_id,
+        {
+            "include_documents": True,
+            "include_prior_notes": True,
+            "include_timeline": True,
+        },
+    )
+    if context is None:
+        raise ValueError("Case not found.")
+
+    previous = normalize_generated_draft(run.generated_draft_json) or {}
+    memo = run.research_memo_json or {"legal_authority_warning": LEGAL_RESEARCH_WARNING}
+    sources = list(run.retrieved_sources_json or [])
+    critic = run.critic_report_json or {}
+    regenerated = generate_full_legal_draft(
+        context,
+        memo,
+        critic,
+        draft_type,
+        sources,
+        use_llm=use_llm,
+    )
+    if previous.get("final_draft_markdown"):
+        regenerated["previous_draft_markdown"] = previous["final_draft_markdown"]
+    if regenerated.get("_llm_warning"):
+        run.warnings_json = list(dict.fromkeys([*(run.warnings_json or []), str(regenerated["_llm_warning"])]))
+
+    regenerated = normalize_generated_draft(regenerated) or {}
+    regenerated["edited_draft_markdown"] = None
+    regenerated["final_draft_markdown"] = regenerated.get("draft_markdown") or ""
+    regenerated["last_edited_at"] = None
+    regenerated["pdf_stale"] = True
+    run.generated_draft_json = regenerated
+    run.llm_used_for_drafting = bool(regenerated.get("_llm_used"))
+    run.critic_report_json = critic_review_research_memo(memo, sources, context, regenerated)
+    db.commit()
+    db.refresh(run)
+    return regenerated
+
+
+def regenerate_research_artifacts(
+    db: Session,
+    run: ResearchRun,
+    *,
+    generate_pdf: bool = True,
+    use_edited_draft: bool = True,
+    pdf_mode: str = PDF_MODE_DRAFT_WITH_RESEARCH,
+) -> tuple[str, str | None, list[str]]:
+    response_data = _response_payload(run)
+    if not use_edited_draft and response_data.get("generated_draft"):
+        draft = dict(response_data["generated_draft"])
+        draft["final_draft_markdown"] = draft.get("draft_markdown") or ""
+        response_data["generated_draft"] = draft
+    markdown_path, pdf_path, artifact_warnings = write_research_artifacts(
+        run.id,
+        response_data,
+        generate_pdf=generate_pdf,
+        pdf_mode=pdf_mode,
+    )
+    run.markdown_path = markdown_path
+    if pdf_path:
+        run.pdf_path = pdf_path
+    if artifact_warnings:
+        existing = list(run.warnings_json or [])
+        run.warnings_json = list(dict.fromkeys([*existing, *artifact_warnings]))
+    db.commit()
+    db.refresh(run)
+    return markdown_path, pdf_path, artifact_warnings
+
+
 def _create_research_entry(db: Session, run: ResearchRun) -> None:
     memo = run.research_memo_json or {}
     critic = run.critic_report_json or {}
@@ -288,6 +369,7 @@ def run_research_draft_pipeline(
             llm_drafting_used = bool(generated_draft.get("_llm_used"))
             if request.use_llm and generated_draft.get("_llm_warning"):
                 warnings.append(str(generated_draft["_llm_warning"]))
+            generated_draft = normalize_generated_draft(generated_draft)
 
         critic_report = critic_review_research_memo(memo, sources, context, generated_draft)
         drafting = build_drafting_instructions(context, memo, critic_report, request.draft_type)
@@ -322,6 +404,7 @@ def run_research_draft_pipeline(
             run.id,
             response_data,
             generate_pdf=request.generate_pdf,
+            pdf_mode=request.pdf_mode,
         )
         run.markdown_path = markdown_path
         run.pdf_path = pdf_path

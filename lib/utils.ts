@@ -24,21 +24,37 @@ const dateTimeFormatter = new Intl.DateTimeFormat("en-PK", {
   minute: "2-digit",
 });
 
-export function formatDate(date: string) {
-  return dateFormatter.format(new Date(date));
+function parseSafeDate(date?: string | null) {
+  if (!date) {
+    return null;
+  }
+
+  const parsed = new Date(date);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-export function formatCompactDate(date: string) {
-  return compactDateFormatter.format(new Date(date));
+export function formatDate(date?: string | null) {
+  const parsed = parseSafeDate(date);
+  return parsed ? dateFormatter.format(parsed) : "Not set";
 }
 
-export function formatDateTime(date: string) {
-  return dateTimeFormatter.format(new Date(date));
+export function formatCompactDate(date?: string | null) {
+  const parsed = parseSafeDate(date);
+  return parsed ? compactDateFormatter.format(parsed) : "Not set";
 }
 
-export function getDaysUntil(date: string) {
+export function formatDateTime(date?: string | null) {
+  const parsed = parseSafeDate(date);
+  return parsed ? dateTimeFormatter.format(parsed) : "Not set";
+}
+
+export function getDaysUntil(date?: string | null) {
+  const target = parseSafeDate(date);
+  if (!target) {
+    return 0;
+  }
+
   const now = new Date();
-  const target = new Date(date);
   const diff = Math.ceil(
     (target.getTime() - now.setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24),
   );
