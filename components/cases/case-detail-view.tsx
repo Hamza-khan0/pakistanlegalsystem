@@ -1410,8 +1410,14 @@ export function CaseDetailView({
   const readinessByTask = new Map(datasetReadiness.map((item) => [item.taskName, item]));
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="space-y-6">
+    <div
+      className={
+        activeTab === "research"
+          ? "w-full min-w-0 space-y-6"
+          : "grid w-full min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_320px]"
+      }
+    >
+      <div className="min-w-0 space-y-6">
         {pageNotice ? (
           <InlineFeedback message={pageNotice.message} tone={pageNotice.tone} />
         ) : null}
@@ -1434,7 +1440,7 @@ export function CaseDetailView({
                   {caseState.title}
                 </h1>
               </div>
-              <p className="max-w-4xl text-sm leading-7 text-muted-foreground">
+              <p className="legal-text-wrap max-w-5xl text-sm leading-7 text-muted-foreground">
                 {caseState.summary}
               </p>
             </div>
@@ -2396,7 +2402,7 @@ export function CaseDetailView({
               </form>
             ) : null}
 
-            <Card className="mb-5 space-y-4 rounded-[24px] border-line bg-white/[0.03] p-5">
+            <Card className="mb-5 min-w-0 space-y-4 rounded-[24px] border-line bg-white/[0.03] p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">
@@ -2504,21 +2510,21 @@ export function CaseDetailView({
             ) : null}
 
             {researchWorkflowRuns.length ? (
-              <div className="mb-5 space-y-4">
+              <div className="mb-5 min-w-0 space-y-5">
                 {researchWorkflowRuns.map((run) => (
                   <Card
                     key={run.runId}
-                    className="space-y-5 rounded-[24px] border-line bg-panel-highlight/45"
+                    className="min-w-0 space-y-6 rounded-[28px] border-line bg-panel-highlight/45 p-4 sm:p-5 lg:p-6"
                   >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                      <div className="min-w-0">
                         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">
                           Research & Draft pipeline
                         </p>
                         <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">
                           {run.researchMemo.recommendedDraftType.replaceAll("_", " ")}
                         </h3>
-                        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+                        <p className="legal-text-wrap mt-2 max-w-5xl text-sm leading-6 text-muted-foreground">
                           {run.legalAuthorityWarning}
                         </p>
                         <div className="mt-3 flex flex-wrap gap-2">
@@ -2549,21 +2555,21 @@ export function CaseDetailView({
                       />
                     </div>
 
-                    <div className="grid gap-3 lg:grid-cols-2">
-                      <div className="rounded-2xl border border-line bg-white/[0.03] p-4">
+                    <div className="grid min-w-0 gap-3 xl:grid-cols-2">
+                      <div className="min-w-0 rounded-2xl border border-line bg-white/[0.03] p-4">
                         <p className="text-xs uppercase tracking-[0.2em] text-subtle">
                           Provider status
                         </p>
-                        <div className="mt-3 grid gap-2 text-sm leading-6 text-muted-foreground md:grid-cols-2">
-                          <p>Local retrieval: {providerValue(run.providerStatus, "localRetrievalUsed")}</p>
-                          <p>OpenAI web: {providerValue(run.providerStatus, "openaiWebSearchUsed")}</p>
-                          <p>LLM research: {providerValue(run.providerStatus, "llmUsedForResearch")}</p>
-                          <p>LLM drafting: {providerValue(run.providerStatus, "llmUsedForDrafting")}</p>
-                          <p>Search provider: {providerValue(run.providerStatus, "searchProvider")}</p>
-                          <p>Model: {providerValue(run.providerStatus, "llmModel")}</p>
+                        <div className="mt-3 grid min-w-0 gap-2 text-sm leading-6 text-muted-foreground md:grid-cols-2">
+                          <p className="legal-text-wrap">Local retrieval: {providerValue(run.providerStatus, "localRetrievalUsed")}</p>
+                          <p className="legal-text-wrap">OpenAI web: {providerValue(run.providerStatus, "openaiWebSearchUsed")}</p>
+                          <p className="legal-text-wrap">LLM research: {providerValue(run.providerStatus, "llmUsedForResearch")}</p>
+                          <p className="legal-text-wrap">LLM drafting: {providerValue(run.providerStatus, "llmUsedForDrafting")}</p>
+                          <p className="legal-text-wrap">Search provider: {providerValue(run.providerStatus, "searchProvider")}</p>
+                          <p className="legal-text-wrap">Model: {providerValue(run.providerStatus, "llmModel")}</p>
                         </div>
                       </div>
-                      <div className="rounded-2xl border border-line bg-white/[0.03] p-4">
+                      <div className="min-w-0 rounded-2xl border border-line bg-white/[0.03] p-4">
                         <p className="text-xs uppercase tracking-[0.2em] text-subtle">
                           Workflow stages
                         </p>
@@ -2608,8 +2614,8 @@ export function CaseDetailView({
                       </div>
                     ) : null}
 
-                    <div className="grid gap-3 lg:grid-cols-3">
-                      <div className="rounded-2xl border border-line bg-white/[0.03] p-4">
+                    <div className="grid min-w-0 gap-3 xl:grid-cols-3">
+                      <div className="min-w-0 rounded-2xl border border-line bg-white/[0.03] p-4">
                         <p className="text-xs uppercase tracking-[0.2em] text-subtle">
                           Detected issues
                         </p>
@@ -2628,41 +2634,41 @@ export function CaseDetailView({
                         </div>
                       </div>
 
-                      <div className="rounded-2xl border border-line bg-white/[0.03] p-4">
+                      <div className="min-w-0 rounded-2xl border border-line bg-white/[0.03] p-4">
                         <p className="text-xs uppercase tracking-[0.2em] text-subtle">
                           Query plan
                         </p>
                         <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
                           {run.queryPlan.slice(0, 4).map((query) => (
-                            <li key={`${run.runId}-${query.query}`}>
+                            <li className="legal-text-wrap" key={`${run.runId}-${query.query}`}>
                               {query.query}
                             </li>
                           ))}
                         </ul>
                       </div>
 
-                      <div className="rounded-2xl border border-line bg-white/[0.03] p-4">
+                      <div className="min-w-0 rounded-2xl border border-line bg-white/[0.03] p-4">
                         <p className="text-xs uppercase tracking-[0.2em] text-subtle">
                           Critic review
                         </p>
-                        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                        <p className="legal-text-wrap mt-3 text-sm leading-6 text-muted-foreground">
                           {run.criticReport.recommendation}
                         </p>
                       </div>
                     </div>
 
-                    <div className="grid gap-4 xl:grid-cols-2">
-                      <div className="rounded-2xl border border-line bg-white/[0.03] p-4">
+                    <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+                      <div className="min-w-0 rounded-2xl border border-line bg-white/[0.03] p-4">
                         <p className="text-xs uppercase tracking-[0.2em] text-subtle">
                           Arguments for client
                         </p>
                         <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
                           {run.researchMemo.argumentsForClient.map((item) => (
-                            <li key={`${run.runId}-for-${item}`}>{item}</li>
+                            <li className="legal-text-wrap" key={`${run.runId}-for-${item}`}>{item}</li>
                           ))}
                         </ul>
                       </div>
-                      <div className="rounded-2xl border border-line bg-white/[0.03] p-4">
+                      <div className="min-w-0 rounded-2xl border border-line bg-white/[0.03] p-4">
                         <p className="text-xs uppercase tracking-[0.2em] text-subtle">
                           Risks and gaps
                         </p>
@@ -2673,13 +2679,13 @@ export function CaseDetailView({
                           ]
                             .slice(0, 8)
                             .map((item) => (
-                              <li key={`${run.runId}-risk-${item}`}>{item}</li>
+                              <li className="legal-text-wrap" key={`${run.runId}-risk-${item}`}>{item}</li>
                             ))}
                         </ul>
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-line bg-white/[0.03] p-4">
+                    <div className="min-w-0 rounded-2xl border border-line bg-white/[0.03] p-4">
                       <p className="text-xs uppercase tracking-[0.2em] text-subtle">
                         Retrieved Pakistani legal sources
                       </p>
@@ -2691,26 +2697,26 @@ export function CaseDetailView({
                                 <p className="text-xs uppercase tracking-[0.2em] text-subtle">
                                   {origin.replaceAll("_", " ")}
                                 </p>
-                                <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                                 <div className="mt-3 grid min-w-0 gap-3 xl:grid-cols-2">
                                   {sources.slice(0, 6).map((source) => (
                                     <div
                                       key={`${run.runId}-${origin}-${source.id ?? source.title}`}
-                                      className="rounded-2xl border border-line bg-panel p-4"
+                                      className="min-w-0 rounded-2xl border border-line bg-panel p-4"
                                     >
-                                      <p className="text-sm font-semibold text-foreground">
+                                      <p className="legal-text-wrap text-sm font-semibold text-foreground">
                                         {source.title}
                                       </p>
-                                      <p className="mt-1 text-xs uppercase tracking-[0.18em] text-subtle">
+                                      <p className="legal-url-wrap mt-1 text-xs uppercase tracking-[0.18em] text-subtle">
                                         {source.sourceType}
                                         {source.citation ? ` / ${source.citation}` : ""}
                                         {source.domain ? ` / ${source.domain}` : ""}
                                       </p>
-                                      <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                                      <p className="legal-text-wrap mt-3 text-sm leading-6 text-muted-foreground">
                                         {source.excerpt}
                                       </p>
                                       {source.url ? (
                                         <a
-                                          className="mt-3 inline-flex text-xs font-semibold uppercase tracking-[0.18em] text-accent"
+                                          className="legal-url-wrap mt-3 inline-flex max-w-full text-xs font-semibold uppercase tracking-[0.18em] text-accent"
                                           href={source.url}
                                           rel="noreferrer"
                                           target="_blank"
@@ -2737,19 +2743,19 @@ export function CaseDetailView({
                       run={run}
                     />
 
-                    <div className="rounded-2xl border border-line bg-white/[0.03] p-4">
+                    <div className="min-w-0 rounded-2xl border border-line bg-white/[0.03] p-4">
                       <p className="text-xs uppercase tracking-[0.2em] text-subtle">
                         Drafting instructions
                       </p>
                       <div className="mt-3 grid gap-3 md:grid-cols-2">
-                        <p className="text-sm leading-6 text-muted-foreground">
+                        <p className="legal-text-wrap text-sm leading-6 text-muted-foreground">
                           Draft type:{" "}
                           <span className="text-foreground">
                             {run.draftingInstructions.selectedDraftType ??
                               run.researchMemo.recommendedDraftType}
                           </span>
                         </p>
-                        <p className="text-sm leading-6 text-muted-foreground">
+                        <p className="legal-text-wrap text-sm leading-6 text-muted-foreground">
                           Core issues:{" "}
                           {(run.draftingInstructions.coreIssuesToPlead ?? [])
                             .slice(0, 5)
@@ -3537,11 +3543,13 @@ export function CaseDetailView({
         ) : null}
       </div>
 
-      <RightPanel
-        title="Matter intelligence"
-        description="Contextual risks, reminders, and the latest chamber reasoning for this file."
-        sections={intelligenceSections}
-      />
+      {activeTab === "research" ? null : (
+        <RightPanel
+          title="Matter intelligence"
+          description="Contextual risks, reminders, and the latest chamber reasoning for this file."
+          sections={intelligenceSections}
+        />
+      )}
     </div>
   );
 }

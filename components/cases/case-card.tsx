@@ -16,9 +16,9 @@ interface CaseCardProps {
 export function CaseCard({ caseItem, onEdit }: CaseCardProps) {
   if (onEdit) {
     return (
-      <div className="rounded-[28px] border border-line bg-panel p-5">
+      <div className="min-w-0 rounded-[28px] border border-line bg-panel p-5">
         <div className="flex items-start justify-between gap-4">
-          <div className="space-y-3">
+          <div className="min-w-0 space-y-3">
             <div className="flex flex-wrap gap-2">
               <StatusBadge status={caseItem.status} />
               <PriorityBadge priority={caseItem.priority} />
@@ -27,14 +27,14 @@ export function CaseCard({ caseItem, onEdit }: CaseCardProps) {
               <p className="text-xs uppercase tracking-[0.2em] text-subtle">
                 {caseItem.caseNumber}
               </p>
-              <h3 className="mt-2 text-lg font-semibold tracking-tight text-foreground">
+              <h3 className="legal-text-wrap mt-2 text-lg font-semibold tracking-tight text-foreground">
                 {caseItem.title}
               </h3>
             </div>
           </div>
           <ArrowUpRight className="size-5 text-muted-foreground" />
         </div>
-        <p className="mt-4 text-sm leading-6 text-muted-foreground">
+        <p className="legal-text-wrap mt-4 text-sm leading-6 text-muted-foreground">
           {caseItem.summary}
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
@@ -56,8 +56,8 @@ export function CaseCard({ caseItem, onEdit }: CaseCardProps) {
             </span>
           ))}
         </div>
-        <div className="mt-5 flex items-center justify-between gap-4 border-t border-line pt-4">
-          <div>
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-line pt-4">
+          <div className="min-w-0">
             <p className="text-xs uppercase tracking-[0.18em] text-subtle">
               Next hearing
             </p>
@@ -101,10 +101,10 @@ export function CaseCard({ caseItem, onEdit }: CaseCardProps) {
   return (
     <Link
       href={`/cases/${caseItem.id}`}
-      className="group rounded-[28px] border border-line bg-panel p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/30 hover:bg-panel-highlight"
+      className="group min-w-0 rounded-[28px] border border-line bg-panel p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/30 hover:bg-panel-highlight"
     >
       <div className="flex items-start justify-between gap-4">
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           <div className="flex flex-wrap gap-2">
             <StatusBadge status={caseItem.status} />
             <PriorityBadge priority={caseItem.priority} />
@@ -113,14 +113,14 @@ export function CaseCard({ caseItem, onEdit }: CaseCardProps) {
             <p className="text-xs uppercase tracking-[0.2em] text-subtle">
               {caseItem.caseNumber}
             </p>
-            <h3 className="mt-2 text-lg font-semibold tracking-tight text-foreground">
+            <h3 className="legal-text-wrap mt-2 text-lg font-semibold tracking-tight text-foreground">
               {caseItem.title}
             </h3>
           </div>
         </div>
         <ArrowUpRight className="size-5 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-accent" />
       </div>
-      <p className="mt-4 text-sm leading-6 text-muted-foreground">
+      <p className="legal-text-wrap mt-4 text-sm leading-6 text-muted-foreground">
         {caseItem.summary}
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
@@ -142,8 +142,8 @@ export function CaseCard({ caseItem, onEdit }: CaseCardProps) {
           </span>
         ))}
       </div>
-      <div className="mt-5 flex items-center justify-between gap-4 border-t border-line pt-4">
-        <div>
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-line pt-4">
+        <div className="min-w-0">
           <p className="text-xs uppercase tracking-[0.18em] text-subtle">
             Next hearing
           </p>

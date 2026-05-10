@@ -15,7 +15,7 @@ interface CaseTableProps {
 
 export function CaseTable({ cases, onEdit }: CaseTableProps) {
   return (
-    <div className="overflow-hidden rounded-[28px] border border-line bg-panel">
+    <div className="min-w-0 overflow-x-auto rounded-[28px] border border-line bg-panel">
       <table className="min-w-full divide-y divide-line">
         <thead className="bg-white/[0.02]">
           <tr className="text-left text-xs font-semibold uppercase tracking-[0.22em] text-subtle">
@@ -31,13 +31,13 @@ export function CaseTable({ cases, onEdit }: CaseTableProps) {
           {cases.map((caseItem) => (
             <tr key={caseItem.id} className="transition-colors hover:bg-white/[0.03]">
               <td className="px-5 py-4">
-                <div className="space-y-2">
+                <div className="min-w-[280px] max-w-xl space-y-2">
                   <p className="text-xs uppercase tracking-[0.18em] text-subtle">
                     {caseItem.caseNumber}
                   </p>
                   <div>
-                    <p className="font-medium text-foreground">{caseItem.title}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
+                    <p className="legal-text-wrap font-medium text-foreground">{caseItem.title}</p>
+                    <p className="legal-text-wrap mt-1 text-sm text-muted-foreground">
                       {caseItem.client}
                     </p>
                   </div>
@@ -55,7 +55,7 @@ export function CaseTable({ cases, onEdit }: CaseTableProps) {
                   </div>
                 </div>
               </td>
-              <td className="px-5 py-4 text-sm text-muted-foreground">
+              <td className="legal-text-wrap min-w-[180px] px-5 py-4 text-sm text-muted-foreground">
                 {caseItem.forum}
               </td>
               <td className="px-5 py-4">
@@ -68,7 +68,7 @@ export function CaseTable({ cases, onEdit }: CaseTableProps) {
                 <AvatarStack names={caseItem.assignedCounsel} />
               </td>
               <td className="px-5 py-4 text-right">
-                <div className="flex items-center justify-end gap-3">
+                <div className="flex min-w-[360px] flex-wrap items-center justify-end gap-2">
                   {onEdit ? (
                     <button
                       className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"

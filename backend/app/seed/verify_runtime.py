@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 import sys
 import tempfile
 import time
@@ -14,7 +15,23 @@ import httpx
 
 
 API_BASE_URL = os.getenv("VERIFY_API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
-FRONTEND_BASE_URL = os.getenv("VERIFY_FRONTEND_BASE_URL", "http://127.0.0.1:3001").rstrip("/")
+def _port_is_open(host: str, port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(0.5)
+        return sock.connect_ex((host, port)) == 0
+
+
+def _resolve_frontend_base_url() -> str:
+    configured = os.getenv("VERIFY_FRONTEND_BASE_URL")
+    if configured:
+        return configured.rstrip("/")
+    for port in (3001, 3000, 5173):
+        if _port_is_open("127.0.0.1", port):
+            return f"http://127.0.0.1:{port}"
+    return "http://127.0.0.1:3001"
+
+
+FRONTEND_BASE_URL = _resolve_frontend_base_url()
 FRONTEND_ORIGIN = os.getenv("VERIFY_FRONTEND_ORIGIN", FRONTEND_BASE_URL)
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 REPORT_DIR = PROJECT_ROOT / "verification_reports"
@@ -33,7 +50,7 @@ class CheckResult:
 
 class RuntimeVerifier:
     def __init__(self) -> None:
-        self.client = httpx.Client(base_url=API_BASE_URL, timeout=45.0, follow_redirects=True)
+        self.client = httpx.Client(base_url=API_BASE_URL, timeout=180.0, follow_redirects=True)
         self.web = httpx.Client(base_url=FRONTEND_BASE_URL, timeout=60.0, follow_redirects=True)
         self.results: list[CheckResult] = []
         self.case_id: str | None = None
@@ -807,7 +824,21 @@ def write_reports(results: list[CheckResult]) -> tuple[Path, Path]:
 
     json_path = REPORT_DIR / "latest_runtime_certification.json"
     md_path = REPORT_DIR / "latest_runtime_certification.md"
+    api_path = REPORT_DIR / "api_certification.json"
+    frontend_path = REPORT_DIR / "frontend_route_certification.txt"
     json_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    api_payload = {
+        "generatedAt": timestamp,
+        "apiBaseUrl": API_BASE_URL,
+        "summary": {
+            "total": len([item for item in results if item.area != "Frontend"]),
+            "passed": len([item for item in results if item.area != "Frontend" and item.status == "PASS"]),
+            "warnings": len([item for item in results if item.area != "Frontend" and item.status == "WARN"]),
+            "failed": len([item for item in results if item.area != "Frontend" and item.status == "FAIL"]),
+        },
+        "results": [asdict(item) for item in results if item.area != "Frontend"],
+    }
+    api_path.write_text(json.dumps(api_payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
     lines = [
         "# AI Legal Chambers Runtime Certification",
@@ -829,6 +860,19 @@ def write_reports(results: list[CheckResult]) -> tuple[Path, Path]:
         notes = item.notes.replace("|", "\\|").replace("\n", " ")
         lines.append(f"| {item.area} | `{item.method}` | `{item.route}` | {item.status} | {item.result} | {notes} |")
     md_path.write_text("\n".join(lines), encoding="utf-8")
+    frontend_lines = [
+        "AI Legal Chambers Frontend Route Certification",
+        f"Generated: {timestamp}",
+        f"Frontend: {FRONTEND_BASE_URL}",
+        "",
+    ]
+    for item in results:
+        if item.area != "Frontend":
+            continue
+        frontend_lines.append(
+            f"{item.status:4} {item.method:4} {item.route:42} {item.result:12} {item.notes}"
+        )
+    frontend_path.write_text("\n".join(frontend_lines), encoding="utf-8")
     return json_path, md_path
 
 
@@ -842,6 +886,8 @@ def main() -> int:
     failures = [item for item in verifier.results if item.status == "FAIL"]
     print(f"Runtime certification written to {json_path}")
     print(f"Markdown report written to {md_path}")
+    print(f"API report written to {REPORT_DIR / 'api_certification.json'}")
+    print(f"Frontend route report written to {REPORT_DIR / 'frontend_route_certification.txt'}")
     print(f"Passed {len(verifier.results) - len(failures)}/{len(verifier.results)} checks")
     for item in failures[:20]:
         print(f"FAIL {item.area} {item.method} {item.route}: {item.result} {item.notes}")

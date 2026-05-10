@@ -88,3 +88,14 @@ a {
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+.legal-text-wrap {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.legal-url-wrap {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}

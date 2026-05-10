@@ -578,15 +578,15 @@ export function CasesView({
         </SectionCard>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-6">
-          <Card className="space-y-5">
+      <div className="grid w-full min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 space-y-6">
+          <Card className="min-w-0 space-y-5">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-subtle">
               <SlidersHorizontal className="size-4" />
               Search and filters
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+            <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
               <SearchInput
                 placeholder="Search by title, case number, party, forum"
                 value={search}
@@ -659,11 +659,11 @@ export function CasesView({
 
           {filteredCases.length ? (
             <>
-              <div className="hidden xl:block">
+              <div className="hidden min-w-0 xl:block">
                 <CaseTable cases={filteredCases} onEdit={openEditForm} />
               </div>
 
-              <div className="grid gap-4 xl:hidden">
+              <div className="grid min-w-0 gap-4 xl:hidden">
                 {filteredCases.map((caseItem) => (
                   <CaseCard
                     key={caseItem.id}

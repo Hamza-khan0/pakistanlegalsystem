@@ -123,11 +123,11 @@ export function EditableDraftCard({ run, onRunUpdated }: EditableDraftCardProps)
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-white/[0.03] p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+    <div className="min-w-0 rounded-[28px] border border-line bg-white/[0.03] p-4 sm:p-5 lg:p-6">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="min-w-0">
           <p className="text-xs uppercase tracking-[0.2em] text-subtle">Generated legal draft</p>
-          <h4 className="mt-1 text-base font-semibold text-foreground">{draft.title}</h4>
+          <h4 className="legal-text-wrap mt-1 text-lg font-semibold text-foreground">{draft.title}</h4>
           <div className="mt-2 flex flex-wrap gap-2">
             <span className="rounded-full border border-line px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
               {draft.draftType.replaceAll("_", " ")}
@@ -169,17 +169,17 @@ export function EditableDraftCard({ run, onRunUpdated }: EditableDraftCardProps)
 
       {isEditing ? (
         <textarea
-          className="mt-4 min-h-[460px] w-full rounded-2xl border border-line bg-panel p-4 font-mono text-sm leading-6 text-foreground outline-none focus:border-accent"
+          className="legal-text-wrap mt-5 min-h-[620px] w-full resize-y rounded-[24px] border border-line bg-panel p-5 text-[15px] leading-7 text-foreground outline-none focus:border-accent sm:p-6"
           onChange={(event) => setDraftText(event.target.value)}
           value={draftText}
         />
       ) : (
-        <pre className="mt-4 max-h-[520px] overflow-auto whitespace-pre-wrap rounded-2xl border border-line bg-panel p-4 text-sm leading-6 text-muted-foreground">
+        <div className="legal-text-wrap mt-5 max-w-full rounded-[24px] border border-line bg-panel p-5 text-[15px] leading-8 text-foreground/88 sm:p-6">
           {displayedText}
-        </pre>
+        </div>
       )}
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-5 flex flex-wrap gap-2">
         {isEditing ? (
           <>
             <Button disabled={isPending || !draftText.trim()} onClick={handleSave} size="sm" type="button">
@@ -214,10 +214,10 @@ export function EditableDraftCard({ run, onRunUpdated }: EditableDraftCardProps)
         <Button disabled={isPending} onClick={handleRegeneratePdf} size="sm" type="button" variant="secondary">
           {pdfPath ? "Regenerate PDF" : "Generate PDF"}
         </Button>
-        <label className="flex items-center gap-2 rounded-full border border-line px-3 py-1.5 text-xs text-muted-foreground">
+        <label className="flex min-w-0 flex-wrap items-center gap-2 rounded-full border border-line px-3 py-1.5 text-xs text-muted-foreground">
           PDF mode
           <select
-            className="bg-panel text-foreground outline-none"
+            className="max-w-full bg-panel text-foreground outline-none"
             disabled={isPending}
             onChange={(event) => setPdfMode(event.target.value as PdfMode)}
             value={pdfMode}
@@ -271,18 +271,20 @@ export function EditableDraftCard({ run, onRunUpdated }: EditableDraftCardProps)
             </a>
           </>
         ) : (
-          <span className="rounded-full border border-line px-3 py-2 text-xs text-muted-foreground">
+          <span className="legal-text-wrap rounded-full border border-line px-3 py-2 text-xs text-muted-foreground">
             PDF has not been generated yet. Click Generate PDF.
           </span>
         )}
       </div>
 
       {draft.lawyerReviewChecklist.length ? (
-        <div className="mt-4 rounded-2xl border border-line bg-panel-highlight p-4">
+        <div className="mt-5 min-w-0 rounded-2xl border border-line bg-panel-highlight p-4">
           <p className="text-xs uppercase tracking-[0.2em] text-subtle">Lawyer review checklist</p>
           <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
             {draft.lawyerReviewChecklist.slice(0, 8).map((item) => (
-              <li key={`${run.runId}-check-${item}`}>{item}</li>
+              <li className="legal-text-wrap" key={`${run.runId}-check-${item}`}>
+                {item}
+              </li>
             ))}
           </ul>
         </div>

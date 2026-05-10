@@ -124,6 +124,10 @@ export class ApiClientError extends Error {
   }
 }
 
+function backendConnectionMessage() {
+  return `Could not connect to backend at ${getApiBaseUrl()}. Check that FastAPI is running and that NEXT_PUBLIC_API_BASE_URL / INTERNAL_API_BASE_URL match the backend port.`;
+}
+
 async function apiRequest<T>(
   path: string,
   init?: RequestInit & { expectJson?: boolean },
@@ -131,16 +135,24 @@ async function apiRequest<T>(
   const { expectJson = true, headers, body, ...requestInit } = init ?? {};
   const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
 
-  const response = await fetch(buildApiUrl(path), {
-    ...requestInit,
-    body,
-    cache: "no-store",
-    headers: {
-      Accept: "application/json",
-      ...(isFormData ? {} : { "Content-Type": "application/json" }),
-      ...(headers ?? {}),
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(buildApiUrl(path), {
+      ...requestInit,
+      body,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+        ...(isFormData ? {} : { "Content-Type": "application/json" }),
+        ...(headers ?? {}),
+      },
+    });
+  } catch (error) {
+    throw new ApiClientError(
+      error instanceof Error ? `${backendConnectionMessage()} ${error.message}` : backendConnectionMessage(),
+      0,
+    );
+  }
 
   if (!response.ok) {
     let message = response.statusText || "Request failed";
@@ -188,10 +200,18 @@ async function apiFormData<TResponse>(
 }
 
 async function apiText(path: string): Promise<string> {
-  const response = await fetch(buildApiUrl(path), {
-    cache: "no-store",
-    headers: { Accept: "text/plain" },
-  });
+  let response: Response;
+  try {
+    response = await fetch(buildApiUrl(path), {
+      cache: "no-store",
+      headers: { Accept: "text/plain" },
+    });
+  } catch (error) {
+    throw new ApiClientError(
+      error instanceof Error ? `${backendConnectionMessage()} ${error.message}` : backendConnectionMessage(),
+      0,
+    );
+  }
   if (!response.ok) {
     let message = response.statusText || "Request failed";
     try {

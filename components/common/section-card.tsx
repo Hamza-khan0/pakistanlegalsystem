@@ -19,19 +19,19 @@ export function SectionCard({
   className,
 }: SectionCardProps) {
   return (
-    <Card className={cn("space-y-5", className)}>
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
+    <Card className={cn("min-w-0 space-y-5", className)}>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 space-y-1">
           <h2 className="text-base font-semibold tracking-tight text-foreground">
             {title}
           </h2>
           {description ? (
-            <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+            <p className="legal-text-wrap max-w-4xl text-sm leading-6 text-muted-foreground">
               {description}
             </p>
           ) : null}
         </div>
-        {action}
+        {action ? <div className="flex flex-wrap gap-2">{action}</div> : null}
       </div>
       {children}
     </Card>

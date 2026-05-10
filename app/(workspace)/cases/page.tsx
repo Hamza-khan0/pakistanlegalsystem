@@ -1,7 +1,7 @@
 import { CasesView } from "@/components/cases/cases-view";
 import { ErrorState } from "@/components/common/error-state";
 import { PageHeader } from "@/components/common/page-header";
-import { getCases } from "@/lib/api/client";
+import { getApiBaseUrl, getCases } from "@/lib/api/client";
 
 export default async function CasesPage({
   searchParams,
@@ -21,7 +21,7 @@ export default async function CasesPage({
         />
         <ErrorState
           title="Cases unavailable"
-          message={`${result.message} Start the backend and seed the database to populate the matter portfolio.`}
+          message={`${result.message} Could not load the live case portfolio from ${getApiBaseUrl()}. Confirm FastAPI is running on that URL, then run migrations and seed data if the API returns an empty portfolio.`}
         />
       </div>
     );

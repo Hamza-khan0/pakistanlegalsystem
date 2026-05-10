@@ -18,8 +18,8 @@ export function PageHeader({
   actions,
 }: PageHeaderProps) {
   return (
-    <div className="flex flex-col gap-5 border-b border-line pb-6 lg:flex-row lg:items-end lg:justify-between">
-      <div className="space-y-4">
+    <div className="flex min-w-0 flex-col gap-5 border-b border-line pb-6 lg:flex-row lg:items-end lg:justify-between">
+      <div className="min-w-0 space-y-4">
         {eyebrow ? (
           <span className="text-xs font-semibold uppercase tracking-[0.28em] text-accent">
             {eyebrow}
@@ -29,7 +29,7 @@ export function PageHeader({
           <h1 className="text-3xl font-semibold tracking-[-0.04em] text-foreground sm:text-[2rem]">
             {title}
           </h1>
-          <p className="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-[15px]">
+          <p className="legal-text-wrap max-w-5xl text-sm leading-7 text-muted-foreground sm:text-[15px]">
             {description}
           </p>
         </div>
@@ -43,7 +43,7 @@ export function PageHeader({
           </div>
         ) : null}
       </div>
-      {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
+      {actions ? <div className="flex flex-wrap gap-3 lg:justify-end">{actions}</div> : null}
     </div>
   );
 }

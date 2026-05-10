@@ -48,7 +48,7 @@ export default async function ResearchRunDetailPage({
   const sourcesByOrigin = Object.entries(run.sourcesByOrigin);
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-[1600px] min-w-0 space-y-6">
       <PageHeader
         eyebrow="Research & Draft"
         title={draft?.title || run.researchMemo.recommendedDraftType.replaceAll("_", " ")}
@@ -89,7 +89,7 @@ export default async function ResearchRunDetailPage({
         }
       />
 
-      <SectionCard title="Status and Provider Trace">
+      <SectionCard className="min-w-0" title="Status and Provider Trace">
         <div className="flex flex-wrap items-center gap-3">
           <StatusBadge
             status={
@@ -100,16 +100,16 @@ export default async function ResearchRunDetailPage({
                   : "Needs Review"
             }
           />
-          <span className="text-sm text-muted-foreground">{run.legalAuthorityWarning}</span>
+          <span className="legal-text-wrap text-sm text-muted-foreground">{run.legalAuthorityWarning}</span>
         </div>
         {run.privacyNotice ? (
-          <p className="mt-4 text-sm leading-6 text-muted-foreground">
+          <p className="legal-text-wrap mt-4 text-sm leading-6 text-muted-foreground">
             {run.privacyNotice}
           </p>
         ) : null}
       </SectionCard>
 
-      <SectionCard title="Detected Issues">
+      <SectionCard className="min-w-0" title="Detected Issues">
         <div className="flex flex-wrap gap-2">
           {run.detectedIssues.map((issue) => (
             <span
@@ -125,7 +125,7 @@ export default async function ResearchRunDetailPage({
         </div>
       </SectionCard>
 
-      <SectionCard title="Sources Used">
+      <SectionCard className="min-w-0" title="Sources Used">
         <div className="space-y-5">
           {sourcesByOrigin.map(([origin, value]) => {
             const sources = Array.isArray(value) ? value : [];
@@ -138,19 +138,19 @@ export default async function ResearchRunDetailPage({
                   <div className="grid gap-3">
                     {sources.slice(0, 8).map((source, index) => (
                       <div
-                        className="rounded-2xl border border-line bg-white/[0.03] p-4"
+                        className="min-w-0 rounded-2xl border border-line bg-white/[0.03] p-4"
                         key={`${origin}-${source.id ?? source.url ?? index}`}
                       >
-                        <p className="font-medium text-foreground">{source.title}</p>
-                        <p className="mt-1 text-xs uppercase tracking-[0.16em] text-subtle">
+                        <p className="legal-text-wrap font-medium text-foreground">{source.title}</p>
+                        <p className="legal-url-wrap mt-1 text-xs uppercase tracking-[0.16em] text-subtle">
                           {source.citation || source.sourceType}
                         </p>
-                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        <p className="legal-text-wrap mt-2 text-sm leading-6 text-muted-foreground">
                           {source.excerpt}
                         </p>
                         {source.url ? (
                           <a
-                            className="mt-2 inline-flex text-sm font-medium text-accent"
+                            className="legal-url-wrap mt-2 inline-flex max-w-full text-sm font-medium text-accent"
                             href={source.url}
                             rel="noreferrer"
                             target="_blank"
@@ -170,25 +170,25 @@ export default async function ResearchRunDetailPage({
         </div>
       </SectionCard>
 
-      <SectionCard title="Structured Research Memo">
+      <SectionCard className="min-w-0" title="Structured Research Memo">
         <MemoList title="Factual basis" items={run.researchMemo.factualBasis} />
         <MemoList title="Arguments for client" items={run.researchMemo.argumentsForClient} />
         <MemoList title="Arguments against client" items={run.researchMemo.argumentsAgainstClient} />
         <MemoList title="Research gaps" items={run.researchMemo.researchGaps} />
       </SectionCard>
 
-      <SectionCard title="Generated Draft">
+      <SectionCard className="min-w-0" title="Generated Draft">
         <EditableDraftCard run={run} />
       </SectionCard>
 
-      <SectionCard title="Critic Report">
-        <div className="grid gap-4 md:grid-cols-2">
+      <SectionCard className="min-w-0" title="Critic Report">
+        <div className="grid min-w-0 gap-4 md:grid-cols-2">
           <MemoList title="Required lawyer checks" items={run.criticReport.requiredLawyerChecks ?? []} />
           <MemoList title="Drafting defects" items={run.criticReport.draftingDefects ?? []} />
           <MemoList title="Missing authorities" items={run.criticReport.missingAuthorities} />
           <MemoList title="Overclaiming warnings" items={run.criticReport.overclaimingWarnings} />
         </div>
-        <p className="mt-4 text-sm leading-6 text-muted-foreground">
+        <p className="legal-text-wrap mt-4 text-sm leading-6 text-muted-foreground">
           {run.criticReport.recommendation}
         </p>
       </SectionCard>
@@ -198,13 +198,13 @@ export default async function ResearchRunDetailPage({
 
 function MemoList({ title, items }: { title: string; items: string[] }) {
   return (
-    <div className="mb-5 space-y-2">
+    <div className="mb-5 min-w-0 space-y-2">
       <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-subtle">{title}</h3>
       {items.length ? (
         <ul className="space-y-2">
           {items.map((item, index) => (
             <li
-              className="rounded-2xl border border-line bg-white/[0.03] px-4 py-3 text-sm leading-6 text-muted-foreground"
+              className="legal-text-wrap rounded-2xl border border-line bg-white/[0.03] px-4 py-3 text-sm leading-6 text-muted-foreground"
               key={`${title}-${index}`}
             >
               {item}

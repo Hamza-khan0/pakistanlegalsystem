@@ -10,7 +10,8 @@
     "start": "next start",
     "lint": "eslint",
     "verify:frontend": "npm run lint && npm run build",
-    "verify:research": "cd backend && python scripts/verify_cors_research.py && python scripts/verify_case_research_ui_flow.py"
+    "verify:research": "cd backend && python scripts/verify_cors_research.py && python scripts/verify_case_research_ui_flow.py",
+    "certify:runtime": "python scripts/certify_runtime.py"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

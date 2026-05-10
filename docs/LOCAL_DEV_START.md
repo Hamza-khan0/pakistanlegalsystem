@@ -37,6 +37,7 @@ If the backend helper starts on `8001`, create or update `.env.local` in the pro
 
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8001
+INTERNAL_API_BASE_URL=http://127.0.0.1:8001
 ```
 
 Then restart the Next.js dev server.
@@ -66,3 +67,20 @@ python scripts\verify_research_endpoints.py
 ```
 
 These scripts work without OpenAI credentials by using the local deterministic fallback.
+
+## 5. Full Runtime Certification
+
+Start the backend and frontend first, then run:
+
+```powershell
+cd "C:\Users\HAMZA KHAN\Desktop\DNN project"
+npm run certify:runtime
+```
+
+Reports are written to:
+
+```text
+verification_reports/latest_runtime_certification.md
+verification_reports/api_certification.json
+verification_reports/frontend_route_certification.txt
+```
