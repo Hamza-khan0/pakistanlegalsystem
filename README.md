@@ -1,4 +1,4 @@
-# AI Legal Chambers
+# AI Legal Chambers by HAMZA KHAN AND NABEEGH
 
 AI Legal Chambers is a Pakistani legal-tech workspace that now combines:
 
