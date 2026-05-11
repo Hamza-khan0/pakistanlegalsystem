@@ -9,21 +9,6 @@ AI Legal Chambers is a Pakistani legal-tech workspace that now combines:
 - supervised ML/DNN prediction tasks
 - Phase 9 training-readiness, calibration, reranking, benchmarking, and evaluation reporting
 
-## Current Phase
-
-The repository currently includes:
-
-- Phase 1: polished legal-tech frontend shell
-- Phase 2: persistent case, document, timeline, note, draft, and agent-log backend
-- Phase 3: document intelligence and legal work-product artifacts
-- Phase 4: multi-agent chamber orchestration with critic review and case memory
-- Phase 5: grounded Pakistani legal retrieval with source provenance
-- Phase 6: crawler, OCR, bilingual corpus, and retrieval-ready data engineering
-- Phase 7: supervised datasets, baseline ML, multilingual transformer path, hybrid MLP, prediction registry, and prediction APIs
-- Phase 8: semantic retrieval, hybrid lexical + semantic fusion, reranking foundation, multilingual training upgrades, model diagnostics, and retrieval explainability
-- Phase 9: dataset readiness validation, retrieval benchmarking, calibration scaffolding, report generation, chamber quality scoring, and evaluation-first UI upgrades
-- Tier 1 preparation: local/Kaggle/Hugging Face data import, weak-label extraction, label audit, per-task dataset build, and training bundle export
-
 ## Stack
 
 ### Frontend
