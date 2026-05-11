@@ -2865,9 +2865,9 @@ export function CaseDetailView({
                       {note.summary}
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {note.authorities.map((authority) => (
+                      {note.authorities.map((authority, index) => (
                         <span
-                          key={authority}
+                          key={`${note.id}-authority-${index}-${authority}`}
                           className="rounded-full border border-line px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground"
                         >
                           {authority}

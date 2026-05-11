@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.db.session import get_db
 from app.schemas.research import (
     LEGAL_RESEARCH_WARNING,
+    PDF_MODE_DRAFT_WITH_RESEARCH,
     PdfRegenerateRequest,
     PdfRegenerateResponse,
     ResearchDraftRegenerateRequest,
@@ -48,6 +49,47 @@ from app.services.serializers import serialize_research_entry
 from app.utils.http import not_found
 
 router = APIRouter()
+
+
+def _ensure_markdown_artifact(db: Session, run) -> Path:
+    markdown_path = Path(run.markdown_path) if run.markdown_path else None
+    if markdown_path is not None and markdown_path.exists():
+        return markdown_path
+
+    regenerate_research_artifacts(
+        db,
+        run,
+        generate_pdf=False,
+        pdf_mode=PDF_MODE_DRAFT_WITH_RESEARCH,
+    )
+    db.refresh(run)
+    markdown_path = Path(run.markdown_path) if run.markdown_path else None
+    if markdown_path is None or not markdown_path.exists():
+        raise not_found("Markdown artifact could not be generated for this run.")
+    return markdown_path
+
+
+def _ensure_pdf_artifact(db: Session, run) -> Path:
+    pdf_path = Path(run.pdf_path) if run.pdf_path else None
+    if pdf_path is not None and pdf_path.exists():
+        return pdf_path
+
+    regenerate_research_artifacts(
+        db,
+        run,
+        generate_pdf=True,
+        pdf_mode=PDF_MODE_DRAFT_WITH_RESEARCH,
+    )
+    mark_pdf_generated(run)
+    db.commit()
+    db.refresh(run)
+    pdf_path = Path(run.pdf_path) if run.pdf_path else None
+    if pdf_path is None or not pdf_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="PDF artifact could not be generated for this run.",
+        )
+    return pdf_path
 
 
 @router.get("/cases/{case_id}/research", response_model=list[ResearchEntryRead])
@@ -283,11 +325,7 @@ def read_research_markdown(run_id: str, db: Session = Depends(get_db)) -> PlainT
     run = get_research_run(db, run_id)
     if run is None:
         raise not_found("Research run not found.")
-    if not run.markdown_path:
-        raise not_found("Markdown artifact was not generated for this run.")
-    markdown_path = Path(run.markdown_path)
-    if not markdown_path.exists():
-        raise not_found("Markdown artifact file is missing from disk.")
+    markdown_path = _ensure_markdown_artifact(db, run)
     return PlainTextResponse(markdown_path.read_text(encoding="utf-8"))
 
 
@@ -300,11 +338,7 @@ def read_research_pdf(
     run = get_research_run(db, run_id)
     if run is None:
         raise not_found("Research run not found.")
-    if not run.pdf_path:
-        raise not_found("PDF artifact was not generated for this run.")
-    pdf_path = Path(run.pdf_path)
-    if not pdf_path.exists():
-        raise not_found("PDF artifact file is missing from disk.")
+    pdf_path = _ensure_pdf_artifact(db, run)
     disposition = "attachment" if download else "inline"
     return FileResponse(
         pdf_path,
